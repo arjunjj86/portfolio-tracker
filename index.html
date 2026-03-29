@@ -427,6 +427,62 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .fade-d2{animation-delay:.1s}
 .fade-d3{animation-delay:.15s}
 .fade-d4{animation-delay:.2s}
+
+/* ── ASSET BREAKDOWN TABLE ──────────────────────────────────── */
+.breakdown-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.breakdown-row:last-child{border-bottom:none}
+.breakdown-bar-wrap{flex:1;height:4px;background:var(--bg4);border-radius:2px}
+.breakdown-bar{height:4px;border-radius:2px;transition:width .4s ease}
+.breakdown-name{font-size:12px;color:var(--text2);min-width:56px}
+.breakdown-pct{font-family:var(--fm);font-size:12px;color:var(--text);font-weight:600;min-width:38px;text-align:right}
+.breakdown-val{font-family:var(--fm);font-size:11px;color:var(--text2);min-width:80px;text-align:right}
+
+/* ── VIEW TABS ──────────────────────────────────────────────── */
+.view-tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r2);padding:3px;margin-bottom:20px;width:fit-content;flex-wrap:wrap}
+.view-tab{padding:6px 14px;border-radius:4px;font-size:12px;font-weight:600;
+  background:transparent;color:var(--text2);transition:all .15s;cursor:pointer;border:none;font-family:var(--ff)}
+.view-tab.active{background:var(--accent);color:#080c10}
+
+/* ── BROKER SECTION ─────────────────────────────────────────── */
+.broker-section{margin-bottom:32px}
+.broker-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
+  padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);flex-wrap:wrap;gap:10px}
+.broker-name{font-size:14px;font-weight:600;color:var(--text)}
+.broker-stats{display:flex;gap:24px;flex-wrap:wrap}
+.broker-stat{text-align:right}
+.broker-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)}
+.broker-stat-value{font-size:14px;font-weight:600;font-family:var(--fm)}
+
+/* ── MERGE MODAL ────────────────────────────────────────────── */
+.merge-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.merge-row:last-child{border-bottom:none}
+.merge-ticker{font-family:var(--fm);font-size:11px;color:var(--accent);background:rgba(232,184,109,.1);
+  padding:3px 8px;border-radius:4px;min-width:80px;text-align:center;flex-shrink:0;margin-top:2px}
+.merge-info{flex:1;font-size:12px;line-height:1.6}
+.merge-info b{color:var(--text);font-weight:600}
+.merge-info span{color:var(--text2)}
+.merge-action{display:flex;gap:5px;flex-shrink:0}
+.mbtn{padding:4px 9px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--ff);
+  cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
+.mbtn:hover{border-color:var(--border3);color:var(--text)}
+.mbtn.active-update{border-color:var(--accent);color:var(--accent);background:rgba(232,184,109,.08)}
+.mbtn.active-keep{border-color:var(--accent2);color:var(--accent2);background:rgba(93,184,160,.08)}
+.mbtn.active-add{border-color:var(--accent3);color:var(--accent3);background:rgba(123,159,212,.08)}
+.merge-bulk{display:flex;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.merge-bulk button{padding:5px 12px;border-radius:var(--r2);font-size:11px;font-weight:600;
+  font-family:var(--ff);cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
+.merge-bulk button:hover{border-color:var(--border3);color:var(--text)}
+.merge-scroll{max-height:400px;overflow-y:auto}
+
+/* ── DETAIL NEWS ────────────────────────────────────────────── */
+.detail-news-mini{display:flex;flex-direction:column;gap:10px}
+.news-mini-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);
+  padding:12px 14px;cursor:pointer;transition:border-color .15s}
+.news-mini-card:hover{border-color:var(--border2)}
+.news-mini-src{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:4px}
+.news-mini-hl{font-size:12px;color:var(--text);line-height:1.5}
+.news-mini-ago{font-size:11px;color:var(--text3);margin-top:4px}
 </style>
 </head>
 <body>
@@ -471,6 +527,10 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
       <div class="sb-item" onclick="nav('holdings')">
         <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
         Holdings
+      </div>
+      <div class="sb-item" onclick="nav('consolidated')">
+        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+        Consolidated
       </div>
       <div class="sb-item" onclick="nav('performance')">
         <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -550,9 +610,10 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
             <div class="card-title">Allocation by holding</div>
             <div class="chart-wrap"><canvas id="c-alloc"></canvas></div>
           </div>
-          <div class="card card-p fade fade-d2">
+          <div class="card card-p fade fade-d2" style="overflow:hidden">
             <div class="card-title">By asset type</div>
             <div class="chart-wrap"><canvas id="c-type"></canvas></div>
+            <div id="type-breakdown" style="margin-top:14px"></div>
           </div>
           <div class="card card-p fade fade-d3">
             <div class="card-title">By exchange</div>
@@ -573,6 +634,15 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- ── CONSOLIDATED VIEW ──────────────────────────────── -->
+      <div class="view" id="view-consolidated">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+          <div style="font-size:17px;font-weight:600;color:var(--text)">Consolidated View</div>
+        </div>
+        <div class="view-tabs" id="consolidated-tabs"></div>
+        <div id="consolidated-body"></div>
       </div>
 
       <!-- ── HOLDINGS ──────────────────────────────────────── -->
@@ -628,6 +698,15 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
         <div class="card card-p" style="margin-bottom:20px" id="d-notes-card">
           <div class="card-title">Notes</div>
           <div id="d-notes" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
+        </div>
+        <div class="card card-p" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">Related news <span id="d-news-spin"></span></div>
+            <span style="font-size:11px;color:var(--text2)" id="d-news-src"></span>
+          </div>
+          <div class="detail-news-mini" id="d-news-list">
+            <div style="font-size:12px;color:var(--text3)">Loading news…</div>
+          </div>
         </div>
         <div class="card card-p" style="margin-bottom:0">
           <div class="card-title">Transaction history</div>
@@ -1056,6 +1135,33 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
   </div>
 </div>
 
+<!-- Import merge modal -->
+<div class="modal-overlay" id="modal-merge">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-head">
+      <h3>Review import — resolve conflicts</h3>
+      <button class="modal-close" onclick="closeModal('modal-merge')">×</button>
+    </div>
+    <div class="modal-body" style="padding-bottom:8px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">
+        Some tickers already exist in this portfolio. Choose what to do with each one.
+        New tickers (no conflict) will always be added.
+      </div>
+      <div class="merge-bulk">
+        <span style="font-size:11px;color:var(--text2);padding-top:5px">Select all:</span>
+        <button onclick="mergeSelectAll('update')">Update all</button>
+        <button onclick="mergeSelectAll('keep')">Keep all existing</button>
+        <button onclick="mergeSelectAll('add')">Add as new row</button>
+      </div>
+      <div class="merge-scroll" id="merge-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeModal('modal-merge')">Cancel import</button>
+      <button class="btn-save" onclick="confirmMerge()">Apply import</button>
+    </div>
+  </div>
+</div>
+
 <!-- Notification bar -->
 <div class="notif-bar" id="notif-bar"></div>
 
@@ -1216,9 +1322,9 @@ function nav(view) {
   document.getElementById('view-'+view).classList.add('active');
 
   // Match sidebar item
-  const labels = {dashboard:'Dashboard',holdings:'Holdings',performance:'Performance',
+  const labels = {dashboard:'Dashboard',holdings:'Holdings',consolidated:'Consolidated',performance:'Performance',
     transactions:'Transactions',news:'News Feed',calendar:'Calendar',
-    alerts:'Alerts',import:'Import',settings:'Settings'};
+    alerts:'Alerts',import:'Import',settings:'Settings',detail:'Holding Detail'};
   document.querySelectorAll('.sb-item').forEach(i => {
     if (i.textContent.trim() === labels[view]) i.classList.add('active');
   });
@@ -1233,6 +1339,7 @@ function nav(view) {
   const fns = {
     dashboard: renderDashboard,
     holdings: renderHoldingsTable,
+    consolidated: renderConsolidated,
     performance: renderPerformance,
     transactions: renderTxTable,
     news: checkNewsKey,
@@ -1413,10 +1520,11 @@ function deleteHolding(id) {
 }
 
 function computeHolding(h) {
-  const cost  = h.qty * h.avg;
-  const value = h.cur ? h.qty * h.cur : 0;
-  const pl    = cost ? value - cost : 0;
-  const plPct = cost ? (pl / cost) * 100 : 0;
+  const cost  = (h.qty || 0) * (h.avg || 0);
+  // Use qty*cur if cur set, else use stored value field, else 0
+  const value = h.cur ? (h.qty || 0) * h.cur : (h.value || 0);
+  const pl    = cost && value ? value - cost : 0;
+  const plPct = cost && value ? (pl / cost) * 100 : 0;
   return { ...h, cost, value, pl, plPct };
 }
 
@@ -1488,8 +1596,32 @@ function renderTypeChart(holdings) {
   destroyChart('type');
   const map = {};
   holdings.forEach(h => { map[h.type] = (map[h.type]||0) + h.value; });
-  const keys = Object.keys(map);
-  charts.type = new Chart(document.getElementById('c-type'), doughnutCfg(keys, keys.map(k=>map[k])));
+  const keys = Object.keys(map).sort((a,b) => map[b]-map[a]);
+  const total = holdings.reduce((s,h)=>s+h.value,0);
+  charts.type = new Chart(document.getElementById('c-type'), {
+    type:'doughnut',
+    data:{ labels:keys, datasets:[{ data:keys.map(k=>map[k]),
+      backgroundColor: keys.map((_,i)=>PALETTE[i%PALETTE.length]),
+      borderWidth:0, hoverOffset:6 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx => {
+          const pct = total ? ((ctx.raw/total)*100).toFixed(1) : 0;
+          return ` ${ctx.label}: ${fmtINR(ctx.raw)} (${pct}%)`;
+        }}}}}
+  });
+  // Render percentage breakdown list below chart
+  const el = document.getElementById('type-breakdown');
+  if (!el) return;
+  el.innerHTML = keys.map((k,i) => {
+    const pct = total ? (map[k]/total*100) : 0;
+    return `<div class="breakdown-row">
+      <span class="breakdown-name">${badgeHTML(k)}</span>
+      <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+      <span class="breakdown-pct">${pct.toFixed(1)}%</span>
+      <span class="breakdown-val">${fmtINR(map[k])}</span>
+    </div>`;
+  }).join('');
 }
 function renderExchChart(holdings) {
   destroyChart('exch');
@@ -1597,6 +1729,7 @@ function openDetail(id) {
     : '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">No transactions recorded.</td></tr>';
 
   nav('detail');
+  fetchDetailNews(h.ticker, h.name);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1997,42 +2130,6 @@ function showMapper(){
   document.getElementById('mapper').style.display='block';
 }
 
-function applyMapping(){
-  const map={};
-  MAPPER_FIELDS.forEach(f=>{ map[f.key]=document.getElementById('map-'+f.key).value; });
-  const get=(row,k)=>map[k]?(row[map[k]]||''):'';
-  const clean=s=>parseFloat(String(s).replace(/[^0-9.\-]/g,''))||0;
-
-  const arr=rawRows.map(row=>{
-    const qty=clean(get(row,'qty'));
-    const avg=clean(get(row,'avg'));
-    const cur=clean(get(row,'cur'));
-    const val=clean(get(row,'value'))||qty*cur;
-    const ticker=(get(row,'ticker')||'').toString().trim().toUpperCase();
-    if(!ticker||!qty) return null;
-    return {
-      id:'h_'+Date.now()+'_'+Math.random().toString(36).slice(2),
-      ticker, name:get(row,'name')||ticker,
-      type:get(row,'type')||'Stock',
-      exchange:get(row,'exchange')||'NSE',
-      qty, avg, cur, value:val,
-      notes:'', added:new Date().toISOString()
-    };
-  }).filter(Boolean);
-
-  const existing=getHoldings();
-  arr.forEach(h=>{
-    const dup=existing.findIndex(e=>e.ticker===h.ticker);
-    if(dup>=0) existing[dup]=h; else existing.push(h);
-  });
-  setHoldings(existing);
-  document.getElementById('mapper').style.display='none';
-  document.getElementById('file-input').value='';
-  recordPerfSnapshot();
-  nav('dashboard');
-  notif(`Imported ${arr.length} holding${arr.length!==1?'s':''}.`);
-}
-
 function loadSample(){
   const sample=[
     {ticker:'RELIANCE',name:'Reliance Industries Ltd',type:'Stock',exchange:'NSE',qty:50,avg:2650,cur:2890,notes:'Core holding — energy & telecom'},
@@ -2050,6 +2147,363 @@ function loadSample(){
   recordPerfSnapshot();
   nav('dashboard');
   notif('Sample portfolio loaded.');
+}
+
+// ════════════════════════════════════════════════════════════
+// CONSOLIDATED VIEW
+// ════════════════════════════════════════════════════════════
+let consolidatedTab = 'all';
+function renderConsolidated() {
+  const pfIds = Object.keys(STATE.portfolios);
+  const tabs = document.getElementById('consolidated-tabs');
+  tabs.innerHTML = `
+    <button class="view-tab ${consolidatedTab==='all'?'active':''}" onclick="setConsolidatedTab('all')">All brokers</button>
+    ${pfIds.map(id => `<button class="view-tab ${consolidatedTab===id?'active':''}" onclick="setConsolidatedTab('${id}')">${STATE.portfolios[id]}</button>`).join('')}`;
+  renderConsolidatedBody();
+}
+function setConsolidatedTab(id) {
+  consolidatedTab = id;
+  renderConsolidated();
+}
+function renderConsolidatedBody() {
+  const body = document.getElementById('consolidated-body');
+  if (consolidatedTab === 'all') {
+    // Show all portfolios aggregated + individual broker sections
+    const pfIds = Object.keys(STATE.portfolios);
+    // Grand total row
+    let allHoldings = [];
+    pfIds.forEach(id => {
+      const hs = (STATE.holdings[id]||[]).map(computeHolding).map(h=>({...h, _portfolio:id}));
+      allHoldings = allHoldings.concat(hs);
+    });
+    const grandValue = allHoldings.reduce((s,h)=>s+h.value,0);
+    const grandCost  = allHoldings.reduce((s,h)=>s+h.cost,0);
+    const grandPL    = grandValue - grandCost;
+    const grandPLPct = grandCost ? (grandPL/grandCost*100) : 0;
+
+    // Asset type breakdown across all
+    const typeMap = {};
+    allHoldings.forEach(h => { typeMap[h.type]=(typeMap[h.type]||0)+h.value; });
+    const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
+
+    body.innerHTML = `
+      <!-- Grand totals -->
+      <div class="summary-grid fade" style="margin-bottom:24px">
+        <div class="sum-card c-gold">
+          <div class="sum-label">Grand total value</div>
+          <div class="sum-value">${fmtINR(grandValue)}</div>
+          <div class="sum-sub">${allHoldings.length} positions across ${pfIds.length} broker${pfIds.length>1?'s':''}</div>
+        </div>
+        <div class="sum-card c-teal">
+          <div class="sum-label">Total invested</div>
+          <div class="sum-value">${fmtINR(grandCost)}</div>
+          <div class="sum-sub">Cost basis all brokers</div>
+        </div>
+        <div class="sum-card ${grandPL>=0?'c-gain':'c-loss'}">
+          <div class="sum-label">Total P&L</div>
+          <div class="sum-value ${grandPL>=0?'gain':'loss'}">${fmtINR(grandPL)}</div>
+          <div class="sum-sub ${grandPL>=0?'gain':'loss'}">${fmtPct(grandPLPct)}</div>
+        </div>
+      </div>
+
+      <!-- Asset type breakdown across all brokers -->
+      <div class="card card-p fade" style="margin-bottom:24px">
+        <div class="card-title">Asset type breakdown — all brokers</div>
+        ${typeKeys.map((k,i)=>{
+          const pct = grandValue ? (typeMap[k]/grandValue*100) : 0;
+          return `<div class="breakdown-row">
+            <span class="breakdown-name">${badgeHTML(k)}</span>
+            <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+            <span class="breakdown-pct">${pct.toFixed(1)}%</span>
+            <span class="breakdown-val">${fmtINR(typeMap[k])}</span>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Per-broker sections -->
+      ${pfIds.map(id => brokerSectionHTML(id, grandValue)).join('')}
+
+      <!-- Combined holdings table -->
+      <div class="card" style="margin-top:24px">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text)">All holdings</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Broker</th><th>Value</th><th>P&L</th><th>P&L %</th></tr></thead>
+            <tbody>${allHoldings.sort((a,b)=>b.value-a.value).map(h=>`
+              <tr onclick="switchToPortfolioAndDetail('${h._portfolio}','${h.id}')">
+                <td><span class="ticker-pill">${h.ticker}</span></td>
+                <td>${h.name}</td>
+                <td>${badgeHTML(h.type)}</td>
+                <td><span style="font-size:11px;color:var(--text2)">${STATE.portfolios[h._portfolio]||h._portfolio}</span></td>
+                <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
+                <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
+                <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  } else {
+    // Single broker view
+    const id = consolidatedTab;
+    const hs = (STATE.holdings[id]||[]).map(computeHolding);
+    const val = hs.reduce((s,h)=>s+h.value,0);
+    const cost = hs.reduce((s,h)=>s+h.cost,0);
+    const pl = val-cost;
+    const plPct = cost?(pl/cost*100):0;
+    const typeMap = {};
+    hs.forEach(h=>{ typeMap[h.type]=(typeMap[h.type]||0)+h.value; });
+    const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
+
+    body.innerHTML = `
+      <div class="summary-grid fade" style="margin-bottom:24px">
+        <div class="sum-card c-gold">
+          <div class="sum-label">Portfolio value</div>
+          <div class="sum-value">${fmtINR(val)}</div>
+          <div class="sum-sub">${hs.length} positions</div>
+        </div>
+        <div class="sum-card c-teal">
+          <div class="sum-label">Invested</div>
+          <div class="sum-value">${fmtINR(cost)}</div>
+        </div>
+        <div class="sum-card ${pl>=0?'c-gain':'c-loss'}">
+          <div class="sum-label">P&L</div>
+          <div class="sum-value ${pl>=0?'gain':'loss'}">${fmtINR(pl)}</div>
+          <div class="sum-sub ${pl>=0?'gain':'loss'}">${fmtPct(plPct)}</div>
+        </div>
+      </div>
+      <div class="card card-p fade" style="margin-bottom:24px">
+        <div class="card-title">Asset type breakdown</div>
+        ${typeKeys.map((k,i)=>{
+          const pct = val?(typeMap[k]/val*100):0;
+          return `<div class="breakdown-row">
+            <span class="breakdown-name">${badgeHTML(k)}</span>
+            <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
+            <span class="breakdown-pct">${pct.toFixed(1)}%</span>
+            <span class="breakdown-val">${fmtINR(typeMap[k])}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Qty</th><th>Avg</th><th>Value</th><th>P&L</th><th>P&L %</th></tr></thead>
+            <tbody>${hs.sort((a,b)=>b.value-a.value).map(h=>`
+              <tr onclick="switchToPortfolioAndDetail('${id}','${h.id}')">
+                <td><span class="ticker-pill">${h.ticker}</span></td>
+                <td>${h.name}</td>
+                <td>${badgeHTML(h.type)}</td>
+                <td style="font-family:var(--fm)">${h.qty.toLocaleString()}</td>
+                <td style="font-family:var(--fm)">${h.avg?fmtINR(h.avg):'—'}</td>
+                <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
+                <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
+                <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+}
+
+function brokerSectionHTML(id, grandTotal) {
+  const hs = (STATE.holdings[id]||[]).map(computeHolding);
+  if (!hs.length) return '';
+  const val  = hs.reduce((s,h)=>s+h.value,0);
+  const cost = hs.reduce((s,h)=>s+h.cost,0);
+  const pl   = val-cost;
+  const plPct= cost?(pl/cost*100):0;
+  const portPct = grandTotal?(val/grandTotal*100):0;
+  return `<div class="broker-section">
+    <div class="broker-header">
+      <div class="broker-name">${STATE.portfolios[id]||id}</div>
+      <div class="broker-stats">
+        <div class="broker-stat"><div class="broker-stat-label">Value</div><div class="broker-stat-value">${fmtINR(val)}</div></div>
+        <div class="broker-stat"><div class="broker-stat-label">Of total</div><div class="broker-stat-value" style="color:var(--accent)">${portPct.toFixed(1)}%</div></div>
+        <div class="broker-stat"><div class="broker-stat-label">P&L</div><div class="broker-stat-value ${pl>=0?'gain-t':'loss-t'}">${fmtINR(pl)} (${fmtPct(plPct)})</div></div>
+      </div>
+    </div>
+    <div class="card"><div class="table-wrap">
+      <table><thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Value</th><th>Allocation</th><th>P&L %</th></tr></thead>
+      <tbody>${hs.sort((a,b)=>b.value-a.value).slice(0,6).map(h=>`
+        <tr onclick="switchToPortfolioAndDetail('${id}','${h.id}')">
+          <td><span class="ticker-pill">${h.ticker}</span></td>
+          <td>${h.name}</td>
+          <td>${badgeHTML(h.type)}</td>
+          <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
+          <td style="font-family:var(--fm);color:var(--text2)">${val?(h.value/val*100).toFixed(1):0}%</td>
+          <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div></div>
+    ${hs.length>6?`<div style="font-size:11px;color:var(--text2);text-align:right;margin-top:8px;cursor:pointer" onclick="setConsolidatedTab('${id}')">+${hs.length-6} more in ${STATE.portfolios[id]} →</div>`:''}</div>`;
+}
+
+function switchToPortfolioAndDetail(pfId, holdingId) {
+  STATE.currentPortfolio = pfId;
+  document.getElementById('portfolio-sel').value = pfId;
+  openDetail(holdingId);
+}
+
+// ════════════════════════════════════════════════════════════
+// IMPORT MERGE LOGIC
+// ════════════════════════════════════════════════════════════
+let pendingImport = []; // [{holding, isNew, action}]
+
+function applyMapping() {
+  const map = {};
+  MAPPER_FIELDS.forEach(f => { map[f.key] = document.getElementById('map-'+f.key).value; });
+  const get = (row, k) => map[k] ? (row[map[k]] || '') : '';
+  const clean = s => parseFloat(String(s).replace(/[^0-9.\-]/g,'')) || 0;
+
+  const imported = rawRows.map(row => {
+    const qty    = clean(get(row,'qty'));
+    const avg    = clean(get(row,'avg'));
+    const cur    = clean(get(row,'cur'));
+    const val    = clean(get(row,'value')) || qty * cur;
+    const ticker = (get(row,'ticker') || '').toString().trim().toUpperCase();
+    if (!ticker || !qty) return null;
+    return {
+      id: 'h_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+      ticker, name: get(row,'name') || ticker,
+      type: get(row,'type') || 'Stock',
+      exchange: get(row,'exchange') || 'NSE',
+      qty, avg, cur, value: val,
+      notes: '', added: new Date().toISOString()
+    };
+  }).filter(Boolean);
+
+  document.getElementById('mapper').style.display = 'none';
+  document.getElementById('file-input').value = '';
+
+  const existing = getHoldings();
+  const conflicts = [];
+  const newOnes   = [];
+
+  imported.forEach(h => {
+    const dup = existing.find(e => e.ticker === h.ticker);
+    if (dup) conflicts.push({ holding: h, existing: dup, action: 'update' });
+    else newOnes.push({ holding: h, isNew: true, action: 'add' });
+  });
+
+  if (!conflicts.length) {
+    // No conflicts — just add new ones
+    const arr = [...existing, ...newOnes.map(x => x.holding)];
+    setHoldings(arr);
+    recordPerfSnapshot();
+    nav('dashboard');
+    notif(`Imported ${newOnes.length} new holding${newOnes.length!==1?'s':''}.`);
+    return;
+  }
+
+  // Show merge modal
+  pendingImport = [...conflicts, ...newOnes];
+  showMergeModal(conflicts, newOnes);
+}
+
+function showMergeModal(conflicts, newOnes) {
+  const list = document.getElementById('merge-list');
+  list.innerHTML = conflicts.map((c, i) => `
+    <div class="merge-row" id="mrow-${i}">
+      <span class="merge-ticker">${c.holding.ticker}</span>
+      <div class="merge-info">
+        <b>${c.holding.name}</b><br/>
+        <span>Existing: Qty ${c.existing.qty} · Avg ${c.existing.avg ? fmtINR(c.existing.avg) : '—'}</span><br/>
+        <span>Incoming: Qty ${c.holding.qty} · Avg ${c.holding.avg ? fmtINR(c.holding.avg) : '—'}</span>
+      </div>
+      <div class="merge-action">
+        <button class="mbtn active-update" id="mbtn-${i}-update" onclick="setMergeAction(${i},'update')">Replace</button>
+        <button class="mbtn" id="mbtn-${i}-keep" onclick="setMergeAction(${i},'keep')">Keep old</button>
+        <button class="mbtn" id="mbtn-${i}-add" onclick="setMergeAction(${i},'add')">Add both</button>
+      </div>
+    </div>`).join('') +
+    (newOnes.length ? `<div style="padding:12px 0 4px;font-size:11px;color:var(--text2)">
+      ${newOnes.length} new ticker${newOnes.length>1?'s':''} will be added automatically:
+      ${newOnes.map(x=>`<span class="ticker-pill" style="font-size:10px;margin:2px">${x.holding.ticker}</span>`).join(' ')}
+    </div>` : '');
+  openModal('modal-merge');
+}
+
+function setMergeAction(i, action) {
+  pendingImport[i].action = action;
+  ['update','keep','add'].forEach(a => {
+    const btn = document.getElementById(`mbtn-${i}-${a}`);
+    if (btn) btn.className = 'mbtn' + (a === action ? ` active-${a}` : '');
+  });
+}
+
+function mergeSelectAll(action) {
+  pendingImport.forEach((item, i) => {
+    if (!item.isNew) {
+      item.action = action;
+      ['update','keep','add'].forEach(a => {
+        const btn = document.getElementById(`mbtn-${i}-${a}`);
+        if (btn) btn.className = 'mbtn' + (a === action ? ` active-${a}` : '');
+      });
+    }
+  });
+}
+
+function confirmMerge() {
+  let arr = [...getHoldings()];
+  pendingImport.forEach(item => {
+    const h = item.holding;
+    if (item.isNew || item.action === 'add') {
+      // Always add new, or add as separate row
+      h.id = 'h_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      arr.push(h);
+    } else if (item.action === 'update') {
+      const idx = arr.findIndex(e => e.ticker === h.ticker);
+      if (idx >= 0) arr[idx] = { ...arr[idx], ...h, id: arr[idx].id, notes: arr[idx].notes || h.notes };
+    }
+    // 'keep' → do nothing, existing stays
+  });
+  setHoldings(arr);
+  recordPerfSnapshot();
+  closeModal('modal-merge');
+  nav('dashboard');
+  const added   = pendingImport.filter(x=>x.isNew||x.action==='add').length;
+  const updated = pendingImport.filter(x=>!x.isNew&&x.action==='update').length;
+  const kept    = pendingImport.filter(x=>!x.isNew&&x.action==='keep').length;
+  notif(`Import done: ${added} added, ${updated} updated, ${kept} unchanged.`);
+  pendingImport = [];
+}
+
+// ════════════════════════════════════════════════════════════
+// HOLDING DETAIL NEWS
+// ════════════════════════════════════════════════════════════
+async function fetchDetailNews(ticker, name) {
+  const key = STATE.settings.newsapi || '';
+  const el  = document.getElementById('d-news-list');
+  const src = document.getElementById('d-news-src');
+  if (!el) return;
+  if (!key) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text3)">Add a NewsAPI key in <span style="color:var(--accent);cursor:pointer" onclick="nav('settings')">Settings</span> to load news.</div>`;
+    return;
+  }
+  document.getElementById('d-news-spin').innerHTML = '<span class="spinner"></span>';
+  try {
+    const q = encodeURIComponent(`${ticker} OR "${name.split(' ').slice(0,3).join(' ')}"`);
+    const r = await fetch(`https://newsapi.org/v2/everything?q=${q}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${key}`);
+    const d = await r.json();
+    if (d.status !== 'ok') throw new Error(d.message);
+    if (!d.articles.length) {
+      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No recent articles found for this holding.</div>';
+      return;
+    }
+    src.textContent = 'via NewsAPI';
+    el.innerHTML = d.articles.map(a => `
+      <div class="news-mini-card" onclick="window.open('${a.url}','_blank')">
+        <div class="news-mini-src">${a.source.name}</div>
+        <div class="news-mini-hl">${a.title}</div>
+        <div class="news-mini-ago">${timeSince(new Date(a.publishedAt))}</div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text3)">${e.message}</div>`;
+  } finally {
+    const sp = document.getElementById('d-news-spin');
+    if (sp) sp.innerHTML = '';
+  }
 }
 
 // ════════════════════════════════════════════════════════════
