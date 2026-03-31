@@ -1249,6 +1249,43 @@ function saveToStorage() {
   };
   ls('folio_data', JSON.stringify(toSave));
 }
+  // --- DATA VOLATILITY FIX: BACKUP & RESTORE ---
+
+// Call this function to download your entire portfolio as a file
+function exportPortfolioData() {
+  const data = JSON.stringify(STATE, null, 2);
+  const blob = new Blob([data], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `folio_backup_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  notif("Backup downloaded successfully!");
+}
+
+// Call this when a user selects a backup file to upload
+function importPortfolioData(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importedState = JSON.parse(e.target.result);
+      // Basic validation to ensure it's a valid Folio backup
+      if (importedState.holdings && importedState.transactions) {
+        STATE = importedState;
+        saveToStorage();
+        renderAll(); // Refreshes the UI with new data
+        notif("Portfolio restored successfully!");
+      } else {
+        throw new Error("Invalid file format");
+      }
+    } catch (err) {
+      notif("Error: Could not restore backup. Invalid file.");
+    }
+  };
+  reader.readAsText(file);
+}
 function saveSettings() {
   ls('folio_settings', JSON.stringify(STATE.settings));
 }
