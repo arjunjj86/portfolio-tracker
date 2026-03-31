@@ -588,7 +588,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
       <div class="topbar-right">
         <div class="portfolio-sw">
           <select id="portfolio-sel" onchange="switchPortfolio()"></select>
-          <button class="add-portfolio-btn" onclick="addPortfolio()" title="Add portfolio">+</button>
+          <button class="add-portfolio-btn" onclick="updateLivePrices()" title="Refresh Live Prices">
         </div>
         <div class="currency-sw" id="currency-sw">
           <button onclick="setCurrency('INR')" class="active">₹</button>
@@ -2663,6 +2663,45 @@ zone.addEventListener('drop',e=>{
 // INIT
 // ════════════════════════════════════════════════════════════
 boot();
+  // --- STEP 3: LIVE PRICE FETCHING ENGINE ---
+async function updateLivePrices() {
+  const API_KEY = 'YOUR_PASTED_KEY_HERE'; // <--- PASTE YOUR KEY INSIDE THE QUOTES
+  
+  if (STATE.holdings.length === 0) {
+    notif("No holdings found to update.");
+    return;
+  }
+
+  notif("Fetching latest market prices...");
+
+  for (let holding of STATE.holdings) {
+    try {
+      // We use Alpha Vantage 'GLOBAL_QUOTE' to get the latest price
+      const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${holding.ticker}&apikey=${API_KEY}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      // Look for the price in the API response
+      if (data["Global Quote"] && data["Global Quote"]["05. price"]) {
+        holding.currentPrice = parseFloat(data["Global Quote"]["05. price"]);
+        console.log(`Updated ${holding.ticker}: ${holding.currentPrice}`);
+      }
+      
+      // IMPORTANT: Free keys only allow 25 calls per day. 
+      // We add a 1-second delay between stocks to avoid errors.
+      await new Promise(r => setTimeout(r, 1000)); 
+      
+    } catch (err) {
+      console.error("Error fetching " + holding.ticker, err);
+    }
+  }
+
+  saveToStorage(); // Save the new prices so they stay there when you refresh
+  renderAll();     // Update the dashboard and tables
+  notif("Portfolio prices updated!");
+}
 </script>
+  
 </body>
 </html>
