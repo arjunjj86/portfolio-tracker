@@ -834,7 +834,26 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
       <!-- ── SETTINGS ──────────────────────────────────────── -->
       <div class="view" id="view-settings">
         <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:20px">Settings</div>
+<div class="settings-section">
+  <div class="settings-head">Data Management</div>
+  
+  <div class="settings-row">
+    <div class="settings-row-info">
+      <div class="settings-row-label">Export Portfolio</div>
+      <div class="settings-row-sub">Download a backup of all your transactions and holdings.</div>
+    </div>
+    <button class="settings-save" onclick="exportPortfolioData()">Download JSON</button>
+  </div>
 
+  <div class="settings-row">
+    <div class="settings-row-info">
+      <div class="settings-row-label">Restore Backup</div>
+      <div class="settings-row-sub">Upload a previously saved .json backup file.</div>
+    </div>
+    <input type="file" id="restore-input" style="display:none" accept=".json" onchange="importPortfolioData(this.files[0])">
+    <button class="btn-edit" onclick="document.getElementById('restore-input').click()">Upload File</button>
+  </div>
+</div>
         <div class="settings-section">
           <div class="settings-head">Credentials</div>
           <div class="settings-row">
