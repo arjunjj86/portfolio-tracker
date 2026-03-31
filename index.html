@@ -1714,27 +1714,38 @@ function renderHoldings() {
   if(!tbody) return;
   tbody.innerHTML = '';
 
-  // 1. We sort the holdings based on current STATE.sort (keep your existing sort logic if you have it)
   const list = [...STATE.holdings];
+  // Apply sorting if needed
+  if(STATE.sort.key){
+    list.sort((a,b)=>{
+      let v1 = a[STATE.sort.key], v2 = b[STATE.sort.key];
+      if(STATE.sort.key==='gain'){
+        v1 = (a.currentPrice || a.avgPrice) * a.qty - (a.avgPrice * a.qty);
+        v2 = (b.currentPrice || b.avgPrice) * b.qty - (b.avgPrice * b.qty);
+      }
+      return STATE.sort.asc ? (v1 > v2 ? 1 : -1) : (v1 < v2 ? 1 : -1);
+    });
+  }
 
   list.forEach(h => {
     const tr = document.createElement('tr');
-    tr.onclick = () => showDetail(h.ticker); // Keeps your "click to see details" feature
+    tr.onclick = () => showDetail(h.ticker);
     
-    // 2. Calculations for the row
-    const cur = h.currentPrice || 0; // The live price we will fetch
-    const marketVal = h.qty * cur;
+    // CALCULATIONS
+    const cur = h.currentPrice || 0; 
+    const marketVal = h.qty * (cur || h.avgPrice);
     const costVal = h.qty * h.avgPrice;
     const gain = marketVal - costVal;
     const gainPct = costVal > 0 ? (gain / costVal) * 100 : 0;
 
-    // 3. The HTML structure of the row
     tr.innerHTML = `
       <td><span class="ticker-pill">${h.ticker}</span></td>
       <td>${h.qty.toLocaleString()}</td>
       <td>${fmt(h.avgPrice)}</td>
       
-      <td class="fm" style="color:var(--accent)">${cur > 0 ? fmt(cur) : '--'}</td>
+      <td class="fm" style="color:var(--accent); font-weight:600">
+        ${cur > 0 ? fmt(cur) : '<span style="opacity:0.3">--</span>'}
+      </td>
       
       <td class="${gain >= 0 ? 'gain-t' : 'loss-t'}">
         ${fmt(gain)} (${gainPct.toFixed(2)}%)
@@ -1743,20 +1754,6 @@ function renderHoldings() {
     tbody.appendChild(tr);
   });
 }
-  document.getElementById('holdings-table').innerHTML = arr.map(h => `
-    <tr onclick="openDetail('${h.id}')">
-      <td><span class="ticker-pill">${h.ticker}</span></td>
-      <td>${h.name}</td>
-      <td>${badgeHTML(h.type)}</td>
-      <td><span style="font-size:11px;color:var(--text3)">${h.exchange||''}</span></td>
-      <td style="font-family:var(--fm)">${h.qty.toLocaleString()}</td>
-      <td style="font-family:var(--fm)">${h.avg ? fmtINR(h.avg) : '—'}</td>
-      <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-      <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
-      <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:32px">No holdings found.</td></tr>';
-}
-
 function badgeHTML(type) {
   const map = { Stock:'badge-stock',MF:'badge-mf',ETF:'badge-etf',SGB:'badge-sgb',
     REIT:'badge-reit',InvIT:'badge-invit',Intl:'badge-intl',Bond:'badge-bond',Other:'badge-other' };
