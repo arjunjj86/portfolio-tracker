@@ -148,6 +148,16 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
 .tf-btn:hover{border-color:var(--border2);color:var(--text)}
 .tf-btn.active{background:var(--accent);border-color:var(--accent);color:#080c10}
 .price-edit{font-family:var(--fm);font-size:11px;background:var(--bg3);border:1px solid var(--accent);border-radius:4px;color:var(--text);padding:2px 5px;width:86px}
+.price-up{color:var(--gain)!important;animation:priceFlash .7s ease}
+.price-down{color:var(--loss)!important;animation:priceFlash .7s ease}
+.price-stale{opacity:.55}
+@keyframes priceFlash{0%{opacity:.2}100%{opacity:1}}
+.live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;margin-right:5px;vertical-align:middle;flex-shrink:0}
+.live-dot.on{background:var(--gain);box-shadow:0 0 4px var(--gain);animation:ldpulse 2.5s infinite}
+.live-dot.off{background:var(--text3)}
+.live-dot.busy{background:var(--warn);animation:ldpulse .7s infinite}
+@keyframes ldpulse{0%,100%{opacity:1}50%{opacity:.25}}
+.price-status-bar{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text3);font-family:var(--fm);padding:6px 0 0}
 .upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:42px 22px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
 .upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(232,184,109,.04)}
 .upload-zone input{display:none}
@@ -406,6 +416,11 @@ textarea.ff-input{resize:vertical;min-height:68px}
       <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
       <span id="gb-refresh-time">Refresh</span>
     </div>
+    <div style="display:flex;align-items:center;gap:5px;margin-left:4px">
+      <span class="live-dot off" id="live-dot"></span>
+      <span style="font-size:9px;color:var(--text3);font-family:var(--fm)" id="live-status">Prices not loaded</span>
+      <button onclick="fetchLivePrices(true)" style="background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text2);font-size:9px;padding:2px 7px;cursor:pointer;font-family:var(--fm)" id="live-btn">Live prices</button>
+    </div>
   </div>
 
   <div class="content">
@@ -423,7 +438,7 @@ textarea.ff-input{resize:vertical;min-height:68px}
           <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="nav('holdings')">View all &#8594;</span>
         </div>
         <div class="table-wrap" style="margin-top:9px">
-          <table><thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Value</th><th>P&amp;L</th><th>P&amp;L %</th><th>Weight</th></tr></thead>
+          <table><thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Price</th><th>Value</th><th>P&amp;L</th><th>P&amp;L %</th><th>Weight</th></tr></thead>
           <tbody id="dash-table"></tbody></table>
         </div>
       </div>
@@ -461,7 +476,14 @@ textarea.ff-input{resize:vertical;min-height:68px}
       <div class="filter-bar">
         <input id="search-h" placeholder="Search ticker or name&#8230;" oninput="renderHoldingsTable()"/>
         <div class="type-filter" id="type-filters"></div>
-        <div style="margin-left:auto"><button class="btn-primary" id="add-h-btn" onclick="openAddHolding(null)">+ Add holding</button></div>
+        <div style="margin-left:auto;display:flex;gap:7px;align-items:center">
+          <div class="price-status-bar" id="h-price-status" style="display:none">
+            <span class="live-dot" id="h-live-dot"></span>
+            <span id="h-live-text"></span>
+          </div>
+          <button onclick="fetchLivePrices(true)" style="background:none;border:1px solid var(--border2);border-radius:var(--r2);color:var(--text2);font-size:11px;padding:5px 11px;cursor:pointer;font-family:var(--ff);transition:all .15s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">&#8635; Live prices</button>
+          <button class="btn-primary" id="add-h-btn" onclick="openAddHolding(null)">+ Add holding</button>
+        </div>
       </div>
       <div class="card">
         <div class="table-wrap">
@@ -835,6 +857,7 @@ function showApp(){
   fetchFX();nav('dashboard');
   alertInterval=setInterval(checkAlerts,300000);
   setTimeout(checkAlerts,2500);
+  setTimeout(()=>fetchLivePrices(false),1500);
   updateGrandBar();
 }
 
@@ -1022,14 +1045,217 @@ function updateGrandBar(){
 }
 
 // ═══ REFRESH ══════════════════════════════════════════════════
+// ═══ LIVE PRICE ENGINE ════════════════════════════════════════
+// Sources:
+//  NSE/BSE stocks, ETFs, REITs, InvITs → Yahoo Finance via allorigins proxy (.NS / .BO suffix)
+//  Mutual Funds → mfapi.in (free, no key, AMFI NAV data)
+//  International stocks → Alpha Vantage (key in Settings) or Yahoo Finance
+//  SGBs → Yahoo Finance (NSE listed) or gold proxy via GOLDBEES
+// Prices update: on demand + auto every 5min during NSE market hours (09:15–15:30 IST Mon-Fri)
+
+let priceCache = {};      // { ticker: { price, prev, updated, source } }
+let livePriceTimer = null;
+let liveFetching = false;
+
+function isMarketOpen() {
+  const now = new Date();
+  // Convert to IST (UTC+5:30)
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  const day = ist.getUTCDay(); // 0=Sun,6=Sat
+  if (day === 0 || day === 6) return false;
+  const h = ist.getUTCHours(), m = ist.getUTCMinutes();
+  const mins = h * 60 + m;
+  return mins >= 555 && mins <= 930; // 09:15–15:30 IST
+}
+
+function setLiveStatus(state, text) {
+  const dot = document.getElementById('live-dot');
+  const stat = document.getElementById('live-status');
+  const hdot = document.getElementById('h-live-dot');
+  const htext = document.getElementById('h-live-text');
+  const hbar = document.getElementById('h-price-status');
+  if (dot) dot.className = 'live-dot ' + state;
+  if (stat) stat.textContent = text;
+  if (hdot) hdot.className = 'live-dot ' + state;
+  if (htext) htext.textContent = text;
+  if (hbar) hbar.style.display = 'flex';
+}
+
+// Build Yahoo Finance symbol from ticker + exchange
+function yahooSymbol(ticker, exchange, type) {
+  if (type === 'MF') return null; // handled separately
+  if (type === 'Intl' || exchange === 'Intl') return ticker; // raw symbol
+  if (exchange === 'BSE') return ticker + '.BO';
+  return ticker + '.NS'; // default NSE
+}
+
+// Fetch one Yahoo Finance quote via allorigins CORS proxy
+async function fetchYahoo(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const r = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+    const wrapper = await r.json();
+    const data = JSON.parse(wrapper.contents);
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    const price = meta.regularMarketPrice || meta.previousClose;
+    const prev = meta.chartPreviousClose || meta.previousClose || price;
+    return { price, prev, source: 'Yahoo' };
+  } catch { return null; }
+}
+
+// Fetch MF NAV from mfapi.in by searching scheme name/code
+async function fetchMFNAV(ticker, name) {
+  try {
+    // Search by scheme name
+    const searchTerm = (name || ticker).split(' ').slice(0, 3).join(' ');
+    const r = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(searchTerm)}`, { signal: AbortSignal.timeout(8000) });
+    const results = await r.json();
+    if (!results?.length) return null;
+    // Pick first match
+    const schemeCode = results[0].schemeCode;
+    const r2 = await fetch(`https://api.mfapi.in/mf/${schemeCode}`, { signal: AbortSignal.timeout(8000) });
+    const d = await r2.json();
+    const latest = d?.data?.[0];
+    const prev = d?.data?.[1];
+    if (!latest) return null;
+    return { price: parseFloat(latest.nav), prev: prev ? parseFloat(prev.nav) : parseFloat(latest.nav), source: 'AMFI/mfapi' };
+  } catch { return null; }
+}
+
+// Fetch via Alpha Vantage for international stocks (when key is available)
+async function fetchAlphaVantage(ticker) {
+  const key = S.settings.av || '';
+  if (!key) return null;
+  try {
+    const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(ticker)}&apikey=${key}`, { signal: AbortSignal.timeout(10000) });
+    const d = await r.json();
+    const q = d?.['Global Quote'];
+    if (!q?.['05. price']) return null;
+    return { price: parseFloat(q['05. price']), prev: parseFloat(q['08. previous close'] || q['05. price']), source: 'AlphaVantage' };
+  } catch { return null; }
+}
+
+// Main price fetch — fetches all unique tickers across all portfolios
+async function fetchLivePrices(manual = false) {
+  if (liveFetching && !manual) return;
+  liveFetching = true;
+  setLiveStatus('busy', 'Fetching prices…');
+  document.getElementById('live-btn').textContent = '⌛ Fetching…';
+
+  // Collect all unique holdings across portfolios
+  const allHoldings = allH();
+  const unique = {};
+  allHoldings.forEach(h => {
+    const key = h.ticker;
+    if (!unique[key]) unique[key] = { ticker: h.ticker, name: h.name, type: h.type, exchange: h.exchange };
+  });
+
+  const holdings = Object.values(unique);
+  let updated = 0, failed = 0;
+
+  // Process in batches of 4 to avoid rate limits
+  const batch = 4;
+  for (let i = 0; i < holdings.length; i += batch) {
+    const chunk = holdings.slice(i, i + batch);
+    await Promise.all(chunk.map(async h => {
+      let result = null;
+      try {
+        if (h.type === 'MF') {
+          result = await fetchMFNAV(h.ticker, h.name);
+        } else if (h.type === 'Intl' || h.exchange === 'Intl') {
+          // Try Alpha Vantage first, fallback to Yahoo
+          result = await fetchAlphaVantage(h.ticker);
+          if (!result) result = await fetchYahoo(h.ticker);
+        } else {
+          // NSE/BSE — Yahoo Finance
+          const sym = yahooSymbol(h.ticker, h.exchange, h.type);
+          if (sym) result = await fetchYahoo(sym);
+        }
+      } catch { result = null; }
+
+      if (result && result.price > 0) {
+        const prev = priceCache[h.ticker]?.price || result.prev;
+        priceCache[h.ticker] = {
+          price: result.price, prev: result.prev || prev,
+          updated: new Date().toISOString(), source: result.source
+        };
+        // Write price back into all portfolio holdings for this ticker
+        Object.keys(S.portfolios).forEach(pfId => {
+          const arr = S.holdings[pfId] || [];
+          arr.forEach(holding => {
+            if (holding.ticker === h.ticker) {
+              holding.cur = result.price;
+              holding.value = holding.qty * result.price;
+            }
+          });
+        });
+        updated++;
+      } else {
+        failed++;
+      }
+    }));
+    // Small delay between batches
+    if (i + batch < holdings.length) await new Promise(r => setTimeout(r, 300));
+  }
+
+  save();
+  recordAllSnapshots();
+  updateGrandBar();
+  liveFetching = false;
+
+  const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const open = isMarketOpen();
+  setLiveStatus(updated > 0 ? 'on' : 'off',
+    `${updated} updated · ${time}${open ? ' · Market open' : ' · Market closed'}`);
+  document.getElementById('live-btn').textContent = '⟳ Live prices';
+  S.lastRefresh = new Date().toISOString(); save();
+
+  // Re-render current view
+  const activeId = document.querySelector('.view.active')?.id.replace('view-', '');
+  if (activeId === 'dashboard') renderDashboard();
+  else if (activeId === 'holdings') renderHoldingsTable();
+  else if (activeId === 'consolidated') renderConsolidatedBody();
+
+  if (updated > 0) notif(`${updated} price${updated !== 1 ? 's' : ''} updated.`, 'ok');
+  else if (manual) notif('Could not fetch live prices. Check your connection.', 'err');
+
+  // Schedule next auto-refresh if market is open
+  scheduleNextRefresh();
+  checkAlerts();
+}
+
+function scheduleNextRefresh() {
+  if (livePriceTimer) clearTimeout(livePriceTimer);
+  const delay = isMarketOpen() ? 300000 : 1800000; // 5min open, 30min closed
+  livePriceTimer = setTimeout(() => fetchLivePrices(false), delay);
+}
+
+// Price change indicator helper for table cells
+function priceCell(h) {
+  const cached = priceCache[h.ticker];
+  if (!cached) return `<span style="font-family:var(--fm);font-size:12px">${h.cur ? fmtM(h.cur, true) : '<span style="color:var(--text3);font-size:10px">No price</span>'}</span>`;
+  const price = cached.price;
+  const prev = cached.prev || price;
+  const chg = prev ? ((price - prev) / prev * 100) : 0;
+  const cls = price > prev ? 'price-up' : price < prev ? 'price-down' : '';
+  const staleMs = Date.now() - new Date(cached.updated).getTime();
+  const staleClass = staleMs > 3600000 ? ' price-stale' : ''; // stale if > 1hr
+  const chgStr = chg !== 0 ? `<span style="font-size:9px;margin-left:4px;color:${chg > 0 ? 'var(--gain)' : 'var(--loss)'}">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : '';
+  return `<span class="price-live ${cls}${staleClass}" style="font-family:var(--fm)">${fmtM(price, true)}</span>${chgStr}`;
+}
+
 async function refreshAll(){
   document.getElementById('gb-refresh').style.opacity='.5';
-  await fetchFX();recordAllSnapshots();S.lastRefresh=new Date().toISOString();save();
+  await fetchFX();
+  await fetchLivePrices(true);
+  recordAllSnapshots();S.lastRefresh=new Date().toISOString();save();
   updateGrandBar();document.getElementById('gb-refresh').style.opacity='';
   document.getElementById('gb-refresh-time').textContent='Just now';
   const id=document.querySelector('.view.active')?.id.replace('view-','');
   if(id)({dashboard:renderDashboard,holdings:renderHoldingsTable,consolidated:renderConsolidatedBody}[id]||function(){})();
-  notif('Refreshed.','ok');checkAlerts();
+  checkAlerts();
 }
 function recordAllSnapshots(){
   const today=new Date().toISOString().split('T')[0];
@@ -1103,16 +1329,19 @@ function renderExchChart(hs){
 function renderDashTable(hs,total){
   document.getElementById('dash-table').innerHTML=[...hs].sort((a,b)=>b.value-a.value).slice(0,10).map(h=>{
     const w=total?(h.value/total*100):0;
+    const cached=priceCache[h.ticker];
+    const chg=cached&&cached.prev?((cached.price-cached.prev)/cached.prev*100):null;
     return`<tr onclick="openDetail('${h.id}','dashboard')">
       <td><span class="pill">${h.ticker}</span></td>
       <td style="color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis">${h.name}</td>
       <td>${bdg(h.type)}</td>
+      <td>${priceCell(h)}</td>
       <td style="font-family:var(--fm)">${fmtM(h.value)}</td>
       <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtM(h.pl)}</td>
       <td class="${h.plPct!==null?(h.plPct>=0?'gain-t':'loss-t'):''}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
       <td style="font-family:var(--fm);color:var(--text2)">${w.toFixed(1)}%</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:26px">No holdings yet. Import or add to get started.</td></tr>';
+  }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:26px">No holdings yet. Import or add to get started.</td></tr>';
 }
 
 // ═══ HOLDINGS TABLE ═══════════════════════════════════════════
@@ -1139,7 +1368,7 @@ function renderHoldingsTable(){
       <td style="font-size:10px;color:var(--text3)">${h.exchange||''}</td>
       <td style="font-family:var(--fm)">${(h.qty||0).toLocaleString()}</td>
       <td style="font-family:var(--fm)">${h.avg?fmtM(h.avg,true):'\u2014'}</td>
-      <td style="font-family:var(--fm);cursor:pointer" onclick="event.stopPropagation();inlineEditPrice(event,'${h.id}')">${h.cur?fmtM(h.cur,true):'\u2014 \u270e'}</td>
+      <td onclick="event.stopPropagation();inlineEditPrice(event,'${h.id}')">${priceCell(h)}</td>
       <td style="font-family:var(--fm)">${fmtM(h.value)}</td>
       <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtM(h.pl)}</td>
       <td class="${h.plPct!==null?(h.plPct>=0?'gain-t':'loss-t'):''}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
