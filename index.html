@@ -1709,15 +1709,40 @@ function sortBy(key) {
   if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
   renderHoldingsTable();
 }
-function renderHoldingsTable() {
-  const q = (document.getElementById('search-holdings')?.value||'').toLowerCase();
-  let arr = getHoldings().map(computeHolding);
-  if (q) arr = arr.filter(h => h.ticker.toLowerCase().includes(q) || h.name.toLowerCase().includes(q));
-  arr.sort((a,b) => {
-    const va = a[sortKey] ?? 0, vb = b[sortKey] ?? 0;
-    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
-    return (va - vb) * sortDir;
+function renderHoldings() {
+  const tbody = document.getElementById('holdings-body');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+
+  // 1. We sort the holdings based on current STATE.sort (keep your existing sort logic if you have it)
+  const list = [...STATE.holdings];
+
+  list.forEach(h => {
+    const tr = document.createElement('tr');
+    tr.onclick = () => showDetail(h.ticker); // Keeps your "click to see details" feature
+    
+    // 2. Calculations for the row
+    const cur = h.currentPrice || 0; // The live price we will fetch
+    const marketVal = h.qty * cur;
+    const costVal = h.qty * h.avgPrice;
+    const gain = marketVal - costVal;
+    const gainPct = costVal > 0 ? (gain / costVal) * 100 : 0;
+
+    // 3. The HTML structure of the row
+    tr.innerHTML = `
+      <td><span class="ticker-pill">${h.ticker}</span></td>
+      <td>${h.qty.toLocaleString()}</td>
+      <td>${fmt(h.avgPrice)}</td>
+      
+      <td class="fm" style="color:var(--accent)">${cur > 0 ? fmt(cur) : '--'}</td>
+      
+      <td class="${gain >= 0 ? 'gain-t' : 'loss-t'}">
+        ${fmt(gain)} (${gainPct.toFixed(2)}%)
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
+}
   document.getElementById('holdings-table').innerHTML = arr.map(h => `
     <tr onclick="openDetail('${h.id}')">
       <td><span class="ticker-pill">${h.ticker}</span></td>
