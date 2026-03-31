@@ -1,2586 +1,696 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Folio — Portfolio Tracker</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-/* ── RESET & BASE ───────────────────────────────────────────── */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#080c10;
-  --bg2:#0e1318;
-  --bg3:#141b22;
-  --bg4:#1a2330;
-  --border:rgba(255,255,255,0.06);
-  --border2:rgba(255,255,255,0.12);
-  --border3:rgba(255,255,255,0.2);
-  --text:#e2ddd8;
-  --text2:#8a8880;
-  --text3:#4a4846;
-  --accent:#e8b86d;
-  --accent2:#5db8a0;
-  --accent3:#7b9fd4;
-  --gain:#4caf82;
-  --loss:#e05555;
-  --warn:#e8a84a;
-  --ff:'Syne',sans-serif;
-  --fm:'JetBrains Mono',monospace;
-  --r:10px;
-  --r2:6px;
-}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--ff);font-size:14px;min-height:100vh;overflow-x:hidden}
-a{color:inherit;text-decoration:none}
-button{font-family:var(--ff);cursor:pointer;border:none;outline:none}
-input,select,textarea{font-family:var(--ff);outline:none}
-
-/* ── SCROLLBAR ──────────────────────────────────────────────── */
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
-
-/* ── GRAIN OVERLAY ──────────────────────────────────────────── */
-body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.03;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size:200px;z-index:9999}
-
-/* ── PAGES ──────────────────────────────────────────────────── */
-.page{display:none;min-height:100vh}
-.page.active{display:block}
-
-/* ══════════════════════════════════════════════════════════════
-   LOGIN PAGE
-══════════════════════════════════════════════════════════════ */
-#page-login{display:flex;align-items:center;justify-content:center;min-height:100vh;
-  background:radial-gradient(ellipse at 30% 50%,rgba(232,184,109,0.06) 0%,transparent 60%),
-             radial-gradient(ellipse at 70% 20%,rgba(93,184,160,0.05) 0%,transparent 50%)}
-.login-box{width:100%;max-width:400px;padding:0 24px}
-.login-logo{font-size:36px;font-weight:700;letter-spacing:-1px;color:var(--accent);margin-bottom:6px}
-.login-logo span{color:var(--text2);font-weight:400;font-size:14px;letter-spacing:0;display:block;margin-top:4px}
-.login-form{margin-top:40px;display:flex;flex-direction:column;gap:16px}
-.login-field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:8px}
-.login-field input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text);padding:12px 14px;font-size:14px;transition:border-color .2s}
-.login-field input:focus{border-color:var(--accent)}
-.login-btn{margin-top:8px;padding:14px;background:var(--accent);border-radius:var(--r2);color:#080c10;
-  font-size:14px;font-weight:700;font-family:var(--ff);letter-spacing:.05em;transition:opacity .2s}
-.login-btn:hover{opacity:.88}
-.login-err{font-size:12px;color:var(--loss);text-align:center;min-height:16px;margin-top:-6px}
-.login-hint{font-size:11px;color:var(--text3);margin-top:24px;text-align:center;line-height:1.7}
-.login-hint b{color:var(--text2)}
-
-/* ══════════════════════════════════════════════════════════════
-   APP SHELL
-══════════════════════════════════════════════════════════════ */
-#page-app{display:none}
-#page-app.active{display:flex;min-height:100vh}
-
-/* SIDEBAR */
-.sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:transform .3s}
-.sb-logo{padding:24px 20px 20px;font-size:22px;font-weight:700;letter-spacing:-0.5px;color:var(--accent);
-  border-bottom:1px solid var(--border)}
-.sb-logo span{display:block;font-size:10px;color:var(--text3);font-weight:400;letter-spacing:.08em;
-  text-transform:uppercase;margin-top:2px}
-.sb-nav{flex:1;padding:16px 10px;display:flex;flex-direction:column;gap:2px}
-.sb-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r2);
-  font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;position:relative}
-.sb-item:hover{background:var(--bg3);color:var(--text)}
-.sb-item.active{background:var(--bg4);color:var(--accent)}
-.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:3px;height:60%;background:var(--accent);border-radius:0 2px 2px 0}
-.sb-icon{width:16px;height:16px;opacity:.7;flex-shrink:0}
-.sb-item.active .sb-icon{opacity:1}
-.sb-section{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);
-  padding:14px 12px 6px;margin-top:6px}
-.sb-bottom{padding:16px;border-top:1px solid var(--border)}
-.sb-user{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--bg4);border:1px solid var(--border2);
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--accent)}
-.sb-uname{font-size:13px;color:var(--text);font-weight:500}
-.sb-role{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
-.logout-btn{width:100%;padding:8px;background:transparent;border:1px solid var(--border2);
-  border-radius:var(--r2);color:var(--text2);font-size:12px;transition:all .2s}
-.logout-btn:hover{border-color:var(--loss);color:var(--loss)}
-
-/* MAIN CONTENT */
-.main{flex:1;margin-left:220px;min-height:100vh;background:var(--bg)}
-.topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;
-  justify-content:space-between;padding:0 28px;position:sticky;top:0;background:rgba(8,12,16,.92);
-  backdrop-filter:blur(12px);z-index:50}
-.topbar-title{font-size:15px;font-weight:600;color:var(--text)}
-.topbar-right{display:flex;align-items:center;gap:12px}
-
-/* Currency switcher */
-.currency-sw{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);
-  border-radius:var(--r2);padding:3px}
-.currency-sw button{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;
-  font-family:var(--fm);background:transparent;color:var(--text2);transition:all .15s;letter-spacing:.04em}
-.currency-sw button.active{background:var(--accent);color:#080c10}
-
-/* Portfolio switcher */
-.portfolio-sw{display:flex;align-items:center;gap:8px}
-.portfolio-sw select{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text);padding:5px 10px;font-size:12px;font-family:var(--ff)}
-.add-portfolio-btn{width:26px;height:26px;border-radius:var(--r2);background:var(--bg3);
-  border:1px solid var(--border2);color:var(--text2);font-size:16px;display:flex;align-items:center;
-  justify-content:center;transition:all .2s}
-.add-portfolio-btn:hover{border-color:var(--accent);color:var(--accent)}
-
-/* FX badge */
-.fx-badge{font-family:var(--fm);font-size:10px;color:var(--text3);background:var(--bg2);
-  border:1px solid var(--border);border-radius:4px;padding:3px 8px}
-
-/* Hamburger for mobile */
-.hamburger{display:none;width:36px;height:36px;align-items:center;justify-content:center;
-  background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);cursor:pointer;color:var(--text)}
-
-.content{padding:28px}
-
-/* ── VIEWS ──────────────────────────────────────────────────── */
-.view{display:none}
-.view.active{display:block}
-
-/* ── CARDS ──────────────────────────────────────────────────── */
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r)}
-.card-p{padding:20px 22px}
-.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:14px}
-
-/* Summary grid */
-.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:24px}
-.sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;
-  position:relative;overflow:hidden;transition:border-color .2s}
-.sum-card:hover{border-color:var(--border2)}
-.sum-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.sum-card.c-gold::after{background:var(--accent)}
-.sum-card.c-teal::after{background:var(--accent2)}
-.sum-card.c-blue::after{background:var(--accent3)}
-.sum-card.c-gain::after{background:var(--gain)}
-.sum-card.c-loss::after{background:var(--loss)}
-.sum-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:10px}
-.sum-value{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-family:var(--fm)}
-.sum-value.gain{color:var(--gain)}
-.sum-value.loss{color:var(--loss)}
-.sum-sub{font-size:11px;color:var(--text2);margin-top:6px}
-.sum-sub.gain{color:var(--gain)}
-.sum-sub.loss{color:var(--loss)}
-
-/* Charts row */
-.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px}
-.chart-wrap{position:relative;height:200px}
-
-/* Holdings table */
-.table-wrap{overflow-x:auto;border-radius:var(--r)}
-table{width:100%;border-collapse:collapse;min-width:700px}
-thead tr{border-bottom:1px solid var(--border)}
-th{padding:11px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
-   color:var(--text2);font-weight:500;white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
-th:hover{color:var(--text)}
-th.sorted{color:var(--accent)}
-td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
-tr:last-child td{border-bottom:none}
-tbody tr{cursor:pointer;transition:background .12s}
-tbody tr:hover{background:rgba(255,255,255,.025)}
-.gain-t{color:var(--gain)}
-.loss-t{color:var(--loss)}
-
-/* Badges */
-.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;
-  letter-spacing:.04em;text-transform:uppercase}
-.badge-stock{background:rgba(123,159,212,.15);color:var(--accent3)}
-.badge-mf{background:rgba(147,112,219,.15);color:#b39ddb}
-.badge-etf{background:rgba(93,184,160,.15);color:var(--accent2)}
-.badge-sgb{background:rgba(232,184,109,.15);color:var(--accent)}
-.badge-reit{background:rgba(76,175,130,.15);color:var(--gain)}
-.badge-invit{background:rgba(232,168,74,.15);color:var(--warn)}
-.badge-intl{background:rgba(224,85,85,.15);color:var(--loss)}
-.badge-bond{background:rgba(138,136,128,.15);color:var(--text2)}
-.badge-other{background:var(--bg3);color:var(--text2)}
-
-.ticker-pill{font-family:var(--fm);font-size:11px;background:rgba(232,184,109,.1);
-  color:var(--accent);padding:2px 8px;border-radius:4px;display:inline-block}
-.exch-tag{font-size:10px;color:var(--text3);margin-left:4px}
-
-/* ── UPLOAD ZONE ────────────────────────────────────────────── */
-.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:48px 24px;
-  text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(232,184,109,.04)}
-.upload-zone input{display:none}
-.upload-icon{width:40px;height:40px;margin:0 auto 16px;color:var(--text3)}
-.upload-title{font-size:17px;font-weight:600;margin-bottom:8px;color:var(--text)}
-.upload-sub{color:var(--text2);font-size:12px;line-height:1.7}
-.upload-sub a{color:var(--accent);cursor:pointer}
-.upload-formats{display:flex;gap:8px;justify-content:center;margin-top:16px}
-.fmt-tag{padding:4px 10px;border:1px solid var(--border2);border-radius:4px;font-family:var(--fm);
-  font-size:11px;color:var(--text2)}
-.upload-btn{display:inline-block;margin-top:20px;padding:10px 24px;border:1px solid var(--accent);
-  border-radius:var(--r2);color:var(--accent);font-size:13px;font-family:var(--ff);
-  cursor:pointer;transition:background .2s;background:transparent}
-.upload-btn:hover{background:rgba(232,184,109,.1)}
-
-/* Mapper */
-.mapper{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
-  padding:24px;margin-bottom:24px;display:none}
-.mapper h3{font-size:15px;font-weight:600;color:var(--accent);margin-bottom:4px}
-.mapper p{color:var(--text2);font-size:12px;margin-bottom:20px}
-.mapper-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
-.mf label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--text2);margin-bottom:6px}
-.mf select{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text);padding:8px 10px;font-size:13px;font-family:var(--ff)}
-.mf select:focus{border-color:var(--accent)}
-.apply-btn{padding:10px 26px;background:var(--accent);border:none;border-radius:var(--r2);
-  color:#080c10;font-size:13px;font-weight:700;font-family:var(--ff);cursor:pointer;transition:opacity .2s}
-.apply-btn:hover{opacity:.85}
-
-/* ── MODALS ─────────────────────────────────────────────────── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
-  z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);
-  width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
-.modal-head{padding:20px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.modal-head h3{font-size:15px;font-weight:600;color:var(--text)}
-.modal-close{width:28px;height:28px;border-radius:var(--r2);background:var(--bg3);
-  border:1px solid var(--border);color:var(--text2);font-size:16px;display:flex;align-items:center;
-  justify-content:center;cursor:pointer;transition:all .15s}
-.modal-close:hover{border-color:var(--loss);color:var(--loss)}
-.modal-body{padding:22px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.form-row.full{grid-template-columns:1fr}
-.form-field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--text2);margin-bottom:6px}
-.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--bg3);
-  border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);padding:9px 12px;
-  font-size:13px;font-family:var(--ff);transition:border-color .2s}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--accent)}
-.form-field textarea{resize:vertical;min-height:80px}
-.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
-.btn-cancel{padding:9px 18px;background:transparent;border:1px solid var(--border2);
-  border-radius:var(--r2);color:var(--text2);font-size:13px;font-family:var(--ff);transition:all .2s}
-.btn-cancel:hover{border-color:var(--border3);color:var(--text)}
-.btn-save{padding:9px 22px;background:var(--accent);border:none;border-radius:var(--r2);
-  color:#080c10;font-size:13px;font-weight:700;font-family:var(--ff);transition:opacity .2s}
-.btn-save:hover{opacity:.85}
-.btn-danger{padding:9px 18px;background:transparent;border:1px solid var(--loss);
-  border-radius:var(--r2);color:var(--loss);font-size:13px;font-family:var(--ff);transition:all .2s}
-.btn-danger:hover{background:rgba(224,85,85,.1)}
-
-/* ── HOLDING DETAIL ─────────────────────────────────────────── */
-.detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;
-  flex-wrap:wrap;gap:14px}
-.detail-name{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
-.detail-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.detail-price{font-size:28px;font-weight:700;font-family:var(--fm);color:var(--text);margin-bottom:4px}
-.detail-change{font-size:14px;font-family:var(--fm)}
-.detail-actions{display:flex;gap:8px}
-.btn-edit{padding:8px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text2);font-size:12px;font-family:var(--ff);transition:all .2s}
-.btn-edit:hover{border-color:var(--accent);color:var(--accent)}
-.btn-del{padding:8px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text2);font-size:12px;font-family:var(--ff);transition:all .2s}
-.btn-del:hover{border-color:var(--loss);color:var(--loss)}
-.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:24px}
-.metric{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px}
-.metric-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:6px}
-.metric-value{font-size:16px;font-weight:600;font-family:var(--fm);color:var(--text)}
-
-/* ── ALERTS ─────────────────────────────────────────────────── */
-.alert-list{display:flex;flex-direction:column;gap:10px}
-.alert-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);
-  padding:14px 16px;display:flex;align-items:center;gap:14px}
-.alert-row.triggered{border-color:rgba(232,184,109,.4);background:rgba(232,184,109,.05)}
-.alert-ticker{font-family:var(--fm);font-size:12px;color:var(--accent);background:rgba(232,184,109,.1);
-  padding:2px 8px;border-radius:4px;min-width:70px;text-align:center}
-.alert-desc{flex:1;font-size:13px;color:var(--text)}
-.alert-val{font-family:var(--fm);font-size:13px;color:var(--text2)}
-.alert-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.alert-status.on{background:var(--gain)}
-.alert-status.off{background:var(--text3)}
-.alert-status.fired{background:var(--accent);box-shadow:0 0 6px var(--accent)}
-.toggle-sw{position:relative;width:36px;height:20px;cursor:pointer}
-.toggle-sw input{opacity:0;width:0;height:0}
-.toggle-track{position:absolute;inset:0;background:var(--bg4);border-radius:10px;
-  transition:background .2s;border:1px solid var(--border2)}
-.toggle-sw input:checked + .toggle-track{background:var(--accent)}
-.toggle-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;
-  border-radius:50%;transition:transform .2s}
-.toggle-sw input:checked + .toggle-track .toggle-thumb{transform:translateX(16px)}
-
-/* ── NEWS ───────────────────────────────────────────────────── */
-.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
-.news-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
-  padding:18px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s;cursor:pointer}
-.news-card:hover{border-color:var(--border2)}
-.news-src{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:600}
-.news-hl{font-size:13px;line-height:1.55;color:var(--text)}
-.news-meta{font-size:11px;color:var(--text2)}
-.news-tags{display:flex;gap:6px;flex-wrap:wrap}
-
-/* ── CALENDAR ───────────────────────────────────────────────── */
-.cal-section{margin-bottom:28px}
-.cal-list{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.cal-row{display:flex;align-items:center;gap:16px;padding:13px 18px;border-bottom:1px solid var(--border);transition:background .12s}
-.cal-row:last-child{border-bottom:none}
-.cal-row:hover{background:rgba(255,255,255,.02)}
-.cal-date{min-width:52px}
-.cal-day{font-family:var(--fm);font-size:20px;font-weight:500;color:var(--text);line-height:1}
-.cal-mon{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
-.cal-info{flex:1}
-.cal-name{font-size:13px;color:var(--text);margin-bottom:2px}
-.cal-sub{font-size:11px;color:var(--text2)}
-.cal-right{text-align:right}
-.impact{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.04em}
-.impact-h{background:rgba(224,85,85,.15);color:var(--loss)}
-.impact-m{background:rgba(232,168,74,.15);color:var(--warn)}
-.impact-l{background:rgba(138,136,128,.15);color:var(--text2)}
-.timing{font-size:10px;color:var(--text3);margin-top:4px}
-
-/* ── TRANSACTION HISTORY ────────────────────────────────────── */
-.tx-type{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em}
-.tx-buy{background:rgba(76,175,130,.15);color:var(--gain)}
-.tx-sell{background:rgba(224,85,85,.15);color:var(--loss)}
-.tx-div{background:rgba(123,159,212,.15);color:var(--accent3)}
-.tx-int{background:rgba(232,184,109,.15);color:var(--accent)}
-.tx-sip{background:rgba(147,112,219,.15);color:#b39ddb}
-
-/* ── SETTINGS ───────────────────────────────────────────────── */
-.settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);
-  margin-bottom:20px;overflow:hidden}
-.settings-head{padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text)}
-.settings-row{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:20px}
-.settings-row:last-child{border-bottom:none}
-.settings-row-info{flex:1}
-.settings-row-label{font-size:13px;color:var(--text);margin-bottom:2px}
-.settings-row-sub{font-size:11px;color:var(--text2)}
-.settings-input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);
-  color:var(--text);padding:7px 12px;font-size:12px;font-family:var(--fm);width:260px}
-.settings-input:focus{border-color:var(--accent)}
-.settings-save{padding:7px 16px;background:var(--accent);border:none;border-radius:var(--r2);
-  color:#080c10;font-size:12px;font-weight:700;font-family:var(--ff);cursor:pointer}
-
-/* ── PERFORMANCE CHART ──────────────────────────────────────── */
-.perf-wrap{position:relative;height:260px;margin-bottom:16px}
-.range-btns{display:flex;gap:4px;margin-bottom:18px}
-.range-btn{padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:var(--r2);
-  color:var(--text2);font-size:11px;font-family:var(--ff);transition:all .15s;font-weight:600}
-.range-btn:hover{border-color:var(--border2);color:var(--text)}
-.range-btn.active{background:var(--accent);border-color:var(--accent);color:#080c10}
-
-/* ── EMPTY STATES ───────────────────────────────────────────── */
-.empty{text-align:center;padding:48px 24px;color:var(--text2)}
-.empty h3{font-size:17px;font-weight:600;color:var(--text);margin-bottom:8px}
-.empty p{font-size:13px;line-height:1.6}
-
-/* ── NOTIFICATIONS ──────────────────────────────────────────── */
-.notif-bar{position:fixed;top:66px;left:50%;transform:translateX(-50%);z-index:300;
-  background:var(--bg3);border:1px solid var(--accent);border-radius:var(--r2);
-  padding:10px 20px;font-size:13px;color:var(--accent);display:none;
-  box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:90vw;text-align:center}
-.notif-bar.show{display:block;animation:slideDown .3s ease}
-@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-
-/* ── LOADER ─────────────────────────────────────────────────── */
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-left:8px}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── BACK BTN ───────────────────────────────────────────────── */
-.back-btn{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:13px;
-  cursor:pointer;margin-bottom:20px;width:fit-content;transition:color .15s}
-.back-btn:hover{color:var(--accent)}
-
-/* ── FAB ────────────────────────────────────────────────────── */
-.fab{position:fixed;bottom:28px;right:28px;width:50px;height:50px;border-radius:50%;
-  background:var(--accent);border:none;color:#080c10;font-size:22px;font-weight:600;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:90;
-  box-shadow:0 4px 20px rgba(232,184,109,.3);transition:all .2s}
-.fab:hover{transform:scale(1.07);box-shadow:0 6px 28px rgba(232,184,109,.4)}
-
-/* ── RESPONSIVE ─────────────────────────────────────────────── */
-@media(max-width:900px){
-  .charts-row{grid-template-columns:1fr 1fr}
-  .sidebar{transform:translateX(-100%)}
-  .sidebar.open{transform:translateX(0)}
-  .main{margin-left:0}
-  .hamburger{display:flex}
-  .sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;display:none}
-  .sb-overlay.show{display:block}
-}
-@media(max-width:600px){
-  .charts-row{grid-template-columns:1fr}
-  .content{padding:16px}
-  .summary-grid{grid-template-columns:1fr 1fr}
-  .form-row{grid-template-columns:1fr}
-  .topbar{padding:0 16px}
-}
-
-/* ── FADE ANIMATIONS ────────────────────────────────────────── */
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fade{animation:fadeUp .35s ease both}
-.fade-d1{animation-delay:.05s}
-.fade-d2{animation-delay:.1s}
-.fade-d3{animation-delay:.15s}
-.fade-d4{animation-delay:.2s}
-
-/* ── ASSET BREAKDOWN TABLE ──────────────────────────────────── */
-.breakdown-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
-.breakdown-row:last-child{border-bottom:none}
-.breakdown-bar-wrap{flex:1;height:4px;background:var(--bg4);border-radius:2px}
-.breakdown-bar{height:4px;border-radius:2px;transition:width .4s ease}
-.breakdown-name{font-size:12px;color:var(--text2);min-width:56px}
-.breakdown-pct{font-family:var(--fm);font-size:12px;color:var(--text);font-weight:600;min-width:38px;text-align:right}
-.breakdown-val{font-family:var(--fm);font-size:11px;color:var(--text2);min-width:80px;text-align:right}
-
-/* ── VIEW TABS ──────────────────────────────────────────────── */
-.view-tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);
-  border-radius:var(--r2);padding:3px;margin-bottom:20px;width:fit-content;flex-wrap:wrap}
-.view-tab{padding:6px 14px;border-radius:4px;font-size:12px;font-weight:600;
-  background:transparent;color:var(--text2);transition:all .15s;cursor:pointer;border:none;font-family:var(--ff)}
-.view-tab.active{background:var(--accent);color:#080c10}
-
-/* ── BROKER SECTION ─────────────────────────────────────────── */
-.broker-section{margin-bottom:32px}
-.broker-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;
-  padding:14px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);flex-wrap:wrap;gap:10px}
-.broker-name{font-size:14px;font-weight:600;color:var(--text)}
-.broker-stats{display:flex;gap:24px;flex-wrap:wrap}
-.broker-stat{text-align:right}
-.broker-stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)}
-.broker-stat-value{font-size:14px;font-weight:600;font-family:var(--fm)}
-
-/* ── MERGE MODAL ────────────────────────────────────────────── */
-.merge-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
-.merge-row:last-child{border-bottom:none}
-.merge-ticker{font-family:var(--fm);font-size:11px;color:var(--accent);background:rgba(232,184,109,.1);
-  padding:3px 8px;border-radius:4px;min-width:80px;text-align:center;flex-shrink:0;margin-top:2px}
-.merge-info{flex:1;font-size:12px;line-height:1.6}
-.merge-info b{color:var(--text);font-weight:600}
-.merge-info span{color:var(--text2)}
-.merge-action{display:flex;gap:5px;flex-shrink:0}
-.mbtn{padding:4px 9px;border-radius:4px;font-size:11px;font-weight:600;font-family:var(--ff);
-  cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
-.mbtn:hover{border-color:var(--border3);color:var(--text)}
-.mbtn.active-update{border-color:var(--accent);color:var(--accent);background:rgba(232,184,109,.08)}
-.mbtn.active-keep{border-color:var(--accent2);color:var(--accent2);background:rgba(93,184,160,.08)}
-.mbtn.active-add{border-color:var(--accent3);color:var(--accent3);background:rgba(123,159,212,.08)}
-.merge-bulk{display:flex;gap:8px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.merge-bulk button{padding:5px 12px;border-radius:var(--r2);font-size:11px;font-weight:600;
-  font-family:var(--ff);cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
-.merge-bulk button:hover{border-color:var(--border3);color:var(--text)}
-.merge-scroll{max-height:400px;overflow-y:auto}
-
-/* ── DETAIL NEWS ────────────────────────────────────────────── */
-.detail-news-mini{display:flex;flex-direction:column;gap:10px}
-.news-mini-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);
-  padding:12px 14px;cursor:pointer;transition:border-color .15s}
-.news-mini-card:hover{border-color:var(--border2)}
-.news-mini-src{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:4px}
-.news-mini-hl{font-size:12px;color:var(--text);line-height:1.5}
-.news-mini-ago{font-size:11px;color:var(--text3);margin-top:4px}
-</style>
-</head>
-<body>
-
-<!-- ══ LOGIN ════════════════════════════════════════════════ -->
-<div id="page-login" class="page active">
-  <div class="login-box">
-    <div class="login-logo">Folio <span>Investment Portfolio Tracker</span></div>
-    <div class="login-form">
-      <div class="login-field">
-        <label>Username</label>
-        <input type="text" id="l-user" placeholder="Enter username" autocomplete="username"/>
-      </div>
-      <div class="login-field">
-        <label>Password</label>
-        <input type="password" id="l-pass" placeholder="Enter password" autocomplete="current-password"/>
-      </div>
-      <div class="login-err" id="l-err"></div>
-      <button class="login-btn" onclick="doLogin()">Sign in</button>
-    </div>
-    <div class="login-hint">
-      Default credentials: <b>admin / folio2024</b> (owner) &nbsp;|&nbsp; <b>guest / view123</b> (read-only)<br/>
-      Change in Settings after logging in.
-    </div>
-  </div>
-</div>
-
-<!-- ══ APP SHELL ═════════════════════════════════════════════ -->
-<div id="page-app" class="page">
-  <!-- Sidebar overlay for mobile -->
-  <div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
-
-  <!-- Sidebar -->
-  <nav class="sidebar" id="sidebar">
-    <div class="sb-logo">Folio <span>Portfolio Tracker</span></div>
-    <div class="sb-nav">
-      <div class="sb-section">Main</div>
-      <div class="sb-item active" onclick="nav('dashboard')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </div>
-      <div class="sb-item" onclick="nav('holdings')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-        Holdings
-      </div>
-      <div class="sb-item" onclick="nav('consolidated')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-        Consolidated
-      </div>
-      <div class="sb-item" onclick="nav('performance')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Performance
-      </div>
-      <div class="sb-item" onclick="nav('transactions')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3"/></svg>
-        Transactions
-      </div>
-      <div class="sb-section">Markets</div>
-      <div class="sb-item" onclick="nav('news')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
-        News Feed
-      </div>
-      <div class="sb-item" onclick="nav('calendar')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Calendar
-      </div>
-      <div class="sb-section">Manage</div>
-      <div class="sb-item" onclick="nav('alerts')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-        Alerts
-      </div>
-      <div class="sb-item" onclick="nav('import')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        Import
-      </div>
-      <div class="sb-item" onclick="nav('settings')">
-        <svg class="sb-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-        Settings
-      </div>
-    </div>
-    <div class="sb-bottom">
-      <div class="sb-user">
-        <div class="sb-avatar" id="sb-avatar">A</div>
-        <div>
-          <div class="sb-uname" id="sb-uname">Admin</div>
-          <div class="sb-role" id="sb-role">Owner</div>
-        </div>
-      </div>
-      <button class="logout-btn" onclick="doLogout()">Sign out</button>
-    </div>
-  </nav>
-
-  <!-- Main -->
-  <div class="main">
-    <!-- Topbar -->
-    <div class="topbar">
-      <div style="display:flex;align-items:center;gap:12px">
-        <button class="hamburger" onclick="openSidebar()">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
-        </button>
-        <div class="topbar-title" id="topbar-title">Dashboard</div>
-      </div>
-      <div class="topbar-right">
-        <div class="portfolio-sw">
-          <select id="portfolio-sel" onchange="switchPortfolio()"></select>
-          <button class="add-portfolio-btn" onclick="addPortfolio()" title="Add portfolio">+</button>
-        </div>
-        <div class="currency-sw" id="currency-sw">
-          <button onclick="setCurrency('INR')" class="active">₹</button>
-          <button onclick="setCurrency('EUR')">€</button>
-          <button onclick="setCurrency('USD')">$</button>
-        </div>
-        <div class="fx-badge" id="fx-badge">FX live</div>
-      </div>
-    </div>
-
-    <!-- Content -->
-    <div class="content">
-
-      <!-- ── DASHBOARD ─────────────────────────────────────── -->
-      <div class="view active" id="view-dashboard">
-        <div class="summary-grid" id="sum-grid"></div>
-        <div class="charts-row">
-          <div class="card card-p fade fade-d1">
-            <div class="card-title">Allocation by holding</div>
-            <div class="chart-wrap"><canvas id="c-alloc"></canvas></div>
-          </div>
-          <div class="card card-p fade fade-d2" style="overflow:hidden">
-            <div class="card-title">By asset type</div>
-            <div class="chart-wrap"><canvas id="c-type"></canvas></div>
-            <div id="type-breakdown" style="margin-top:14px"></div>
-          </div>
-          <div class="card card-p fade fade-d3">
-            <div class="card-title">By exchange</div>
-            <div class="chart-wrap"><canvas id="c-exch"></canvas></div>
-          </div>
-        </div>
-        <div class="card card-p fade fade-d4" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="card-title" style="margin:0">Recent holdings</div>
-            <span style="font-size:12px;color:var(--accent);cursor:pointer" onclick="nav('holdings')">View all →</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Ticker</th><th>Name</th><th>Type</th><th>Value</th><th>P&L</th><th>P&L %</th>
-              </tr></thead>
-              <tbody id="dash-table"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── CONSOLIDATED VIEW ──────────────────────────────── -->
-      <div class="view" id="view-consolidated">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-          <div style="font-size:17px;font-weight:600;color:var(--text)">Consolidated View</div>
-        </div>
-        <div class="view-tabs" id="consolidated-tabs"></div>
-        <div id="consolidated-body"></div>
-      </div>
-
-      <!-- ── HOLDINGS ──────────────────────────────────────── -->
-      <div class="view" id="view-holdings">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-          <div style="font-size:17px;font-weight:600;color:var(--text)">All Holdings</div>
-          <div style="display:flex;gap:8px" id="holdings-actions">
-            <input type="text" id="search-holdings" placeholder="Search ticker or name…"
-              style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);
-              color:var(--text);padding:8px 12px;font-size:12px;font-family:var(--ff);width:200px"
-              oninput="renderHoldingsTable()"/>
-            <button class="apply-btn" id="add-holding-btn" onclick="openAddHolding()">+ Add holding</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th onclick="sortBy('ticker')">Ticker</th>
-                <th onclick="sortBy('name')">Name</th>
-                <th onclick="sortBy('type')">Type</th>
-                <th>Exchange</th>
-                <th onclick="sortBy('qty')">Qty</th>
-                <th onclick="sortBy('avg')">Avg Cost</th>
-                <th onclick="sortBy('value')">Value</th>
-                <th onclick="sortBy('pl')">P&L</th>
-                <th onclick="sortBy('plPct')">P&L %</th>
-              </tr></thead>
-              <tbody id="holdings-table"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── HOLDING DETAIL ────────────────────────────────── -->
-      <div class="view" id="view-detail">
-        <div class="back-btn" onclick="nav('holdings')">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Back to holdings
-        </div>
-        <div class="detail-header">
-          <div>
-            <div class="detail-name" id="d-name"></div>
-            <div class="detail-meta" id="d-meta"></div>
-          </div>
-          <div>
-            <div class="detail-price" id="d-price"></div>
-            <div class="detail-change" id="d-change"></div>
-          </div>
-          <div class="detail-actions" id="d-actions"></div>
-        </div>
-        <div class="metrics-grid" id="d-metrics"></div>
-        <div class="card card-p" style="margin-bottom:20px" id="d-notes-card">
-          <div class="card-title">Notes</div>
-          <div id="d-notes" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
-        </div>
-        <div class="card card-p" style="margin-bottom:20px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-            <div class="card-title" style="margin:0">Related news <span id="d-news-spin"></span></div>
-            <span style="font-size:11px;color:var(--text2)" id="d-news-src"></span>
-          </div>
-          <div class="detail-news-mini" id="d-news-list">
-            <div style="font-size:12px;color:var(--text3)">Loading news…</div>
-          </div>
-        </div>
-        <div class="card card-p" style="margin-bottom:0">
-          <div class="card-title">Transaction history</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Date</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th><th>Notes</th>
-              </tr></thead>
-              <tbody id="d-tx-table"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── PERFORMANCE ───────────────────────────────────── -->
-      <div class="view" id="view-performance">
-        <div class="card card-p fade">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-            <div class="card-title" style="margin:0">Portfolio value over time</div>
-            <div class="range-btns">
-              <button class="range-btn active" onclick="setRange('1W',this)">1W</button>
-              <button class="range-btn" onclick="setRange('1M',this)">1M</button>
-              <button class="range-btn" onclick="setRange('3M',this)">3M</button>
-              <button class="range-btn" onclick="setRange('6M',this)">6M</button>
-              <button class="range-btn" onclick="setRange('YTD',this)">YTD</button>
-              <button class="range-btn" onclick="setRange('1Y',this)">1Y</button>
-              <button class="range-btn" onclick="setRange('ALL',this)">All</button>
-            </div>
-          </div>
-          <div class="perf-wrap"><canvas id="c-perf"></canvas></div>
-        </div>
-      </div>
-
-      <!-- ── TRANSACTIONS ──────────────────────────────────── -->
-      <div class="view" id="view-transactions">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-          <div style="font-size:17px;font-weight:600;color:var(--text)">Transaction History</div>
-          <button class="apply-btn" id="add-tx-btn" onclick="openAddTx(null)">+ Add transaction</button>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>Date</th><th>Ticker</th><th>Type</th><th>Qty</th>
-                <th>Price</th><th>Total</th><th>Charges</th><th>Notes</th>
-              </tr></thead>
-              <tbody id="tx-table"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── NEWS ─────────────────────────────────────────── -->
-      <div class="view" id="view-news">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-          <div style="font-size:17px;font-weight:600;color:var(--text)">News Feed <span id="news-spin"></span></div>
-          <button class="apply-btn" onclick="fetchAllNews()">Refresh</button>
-        </div>
-        <div id="news-api-warn" style="display:none;background:rgba(232,184,109,.06);border:1px solid rgba(232,184,109,.2);
-          border-radius:var(--r);padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--text2)">
-          Add your free NewsAPI key in <span style="color:var(--accent);cursor:pointer" onclick="nav('settings')">Settings</span> to load live news.
-          Get a free key at <a href="https://newsapi.org" target="_blank" style="color:var(--accent)">newsapi.org</a>.
-        </div>
-        <div class="news-grid" id="news-grid">
-          <div class="empty"><h3>No news loaded</h3><p>Add a NewsAPI key in Settings and click Refresh.</p></div>
-        </div>
-      </div>
-
-      <!-- ── CALENDAR ──────────────────────────────────────── -->
-      <div class="view" id="view-calendar">
-        <div class="cal-section">
-          <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:16px">Earnings & Results</div>
-          <div class="cal-list" id="earn-list"><div class="empty"><h3>Loading…</h3></div></div>
-        </div>
-        <div class="cal-section">
-          <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:16px">Economic Events <span style="font-size:11px;color:var(--text3);font-weight:400">(next 30 days · IST)</span></div>
-          <div class="cal-list" id="eco-list"><div class="empty"><h3>Loading…</h3></div></div>
-        </div>
-      </div>
-
-      <!-- ── ALERTS ────────────────────────────────────────── -->
-      <div class="view" id="view-alerts">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-          <div style="font-size:17px;font-weight:600;color:var(--text)">Price Alerts</div>
-          <button class="apply-btn" id="add-alert-btn" onclick="openAddAlert()">+ New alert</button>
-        </div>
-        <div id="triggered-banner" style="display:none;background:rgba(232,184,109,.08);border:1px solid rgba(232,184,109,.3);
-          border-radius:var(--r2);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--accent)"></div>
-        <div class="alert-list" id="alert-list">
-          <div class="empty"><h3>No alerts set</h3><p>Add an alert to get notified when a holding hits your target.</p></div>
-        </div>
-      </div>
-
-      <!-- ── IMPORT ─────────────────────────────────────────── -->
-      <div class="view" id="view-import">
-        <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:20px">Import Portfolio</div>
-        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
-          <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.pdf,.txt"
-            onchange="handleFile(this.files[0])"/>
-          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4M8 8l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <div class="upload-title">Drop your portfolio file here</div>
-          <div class="upload-sub">
-            Supports ICICI Direct, Spark (Geojit) exports — auto-detected.<br/>
-            Or any broker CSV with a column mapping step.<br/>
-            <a onclick="event.stopPropagation();loadSample()">Load sample data to preview →</a>
-          </div>
-          <div class="upload-formats">
-            <span class="fmt-tag">CSV</span>
-            <span class="fmt-tag">XLSX</span>
-            <span class="fmt-tag">XLS</span>
-            <span class="fmt-tag">PDF*</span>
-          </div>
-          <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose file</button>
-        </div>
-        <div class="mapper" id="mapper">
-          <h3>Map your columns</h3>
-          <p>We detected the columns below. Match each field to your broker's column header.</p>
-          <div class="mapper-grid" id="mapper-grid"></div>
-          <button class="apply-btn" onclick="applyMapping()">Import holdings</button>
-        </div>
-      </div>
-
-      <!-- ── SETTINGS ──────────────────────────────────────── -->
-      <div class="view" id="view-settings">
-        <div style="font-size:17px;font-weight:600;color:var(--text);margin-bottom:20px">Settings</div>
-
-        <div class="settings-section">
-          <div class="settings-head">Credentials</div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Owner password</div>
-              <div class="settings-row-sub">Change the admin login password</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <input type="password" class="settings-input" id="new-pass" placeholder="New password" style="width:180px"/>
-              <button class="settings-save" onclick="changePassword()">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <div class="settings-head">API Keys</div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">NewsAPI key</div>
-              <div class="settings-row-sub">Free at <a href="https://newsapi.org" target="_blank" style="color:var(--accent)">newsapi.org</a> — for live news headlines</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <input type="text" class="settings-input" id="newsapi-key" placeholder="Paste API key"/>
-              <button class="settings-save" onclick="saveKey('newsapi')">Save</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Alpha Vantage key</div>
-              <div class="settings-row-sub">Free at <a href="https://alphavantage.co" target="_blank" style="color:var(--accent)">alphavantage.co</a> — for international stock prices</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <input type="text" class="settings-input" id="av-key" placeholder="Paste API key"/>
-              <button class="settings-save" onclick="saveKey('av')">Save</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Resend API key</div>
-              <div class="settings-row-sub">Free at <a href="https://resend.com" target="_blank" style="color:var(--accent)">resend.com</a> — for email alerts</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <input type="text" class="settings-input" id="resend-key" placeholder="Paste API key"/>
-              <button class="settings-save" onclick="saveKey('resend')">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <div class="settings-head">Display</div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Default currency</div>
-              <div class="settings-row-sub">Currency shown on load</div>
-            </div>
-            <select class="settings-input" id="default-currency" style="width:120px" onchange="saveDefaultCurrency()">
-              <option value="INR">INR (₹)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="USD">USD ($)</option>
-            </select>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Email for alerts</div>
-              <div class="settings-row-sub">Where to send price alert notifications</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <input type="email" class="settings-input" id="alert-email" placeholder="your@email.com"/>
-              <button class="settings-save" onclick="saveKey('email')">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <div class="settings-head">Data</div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Export portfolio</div>
-              <div class="settings-row-sub">Download all holdings as CSV</div>
-            </div>
-            <button class="settings-save" onclick="exportCSV()">Export CSV</button>
-          </div>
-          <div class="settings-row">
-            <div class="settings-row-info">
-              <div class="settings-row-label">Clear all data</div>
-              <div class="settings-row-sub">Remove all holdings and transactions from this browser</div>
-            </div>
-            <button class="btn-danger" onclick="clearAllData()">Clear data</button>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /content -->
-  </div><!-- /main -->
-</div><!-- /page-app -->
-
-<!-- ══ MODALS ════════════════════════════════════════════════ -->
-
-<!-- Add/Edit Holding -->
-<div class="modal-overlay" id="modal-holding">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="mh-title">Add holding</h3>
-      <button class="modal-close" onclick="closeModal('modal-holding')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-field">
-          <label>Ticker / Symbol *</label>
-          <input type="text" id="h-ticker" placeholder="e.g. RELIANCE, HDFCBANK, AAPL"/>
-        </div>
-        <div class="form-field">
-          <label>Company / Fund name</label>
-          <input type="text" id="h-name" placeholder="Full name"/>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Asset type *</label>
-          <select id="h-type">
-            <option value="Stock">Stock</option>
-            <option value="MF">Mutual Fund</option>
-            <option value="ETF">Indian ETF</option>
-            <option value="SGB">Sovereign Gold Bond</option>
-            <option value="REIT">REIT</option>
-            <option value="InvIT">InvIT</option>
-            <option value="Bond">Bond / Debt Fund</option>
-            <option value="Intl">International Stock/ETF</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Exchange</label>
-          <select id="h-exchange">
-            <option value="NSE">NSE</option>
-            <option value="BSE">BSE</option>
-            <option value="Intl">International</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Quantity / Units *</label>
-          <input type="number" id="h-qty" placeholder="0" step="any"/>
-        </div>
-        <div class="form-field">
-          <label>Avg buy price (INR)</label>
-          <input type="number" id="h-avg" placeholder="0.00" step="any"/>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Current price (INR)</label>
-          <input type="number" id="h-cur" placeholder="0.00" step="any"/>
-        </div>
-        <div class="form-field">
-          <label>Sector / Category</label>
-          <input type="text" id="h-sector" placeholder="e.g. Banking, IT, Large Cap"/>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label>Notes</label>
-          <textarea id="h-notes" placeholder="Investment thesis, target price, reminders…"></textarea>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('modal-holding')">Cancel</button>
-      <button class="btn-save" onclick="saveHolding()">Save holding</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add Transaction -->
-<div class="modal-overlay" id="modal-tx">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Add transaction</h3>
-      <button class="modal-close" onclick="closeModal('modal-tx')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-field">
-          <label>Ticker *</label>
-          <select id="tx-ticker"></select>
-        </div>
-        <div class="form-field">
-          <label>Type *</label>
-          <select id="tx-type">
-            <option value="buy">Buy</option>
-            <option value="sell">Sell</option>
-            <option value="div">Dividend</option>
-            <option value="int">SGB Interest</option>
-            <option value="sip">SIP</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Date *</label>
-          <input type="date" id="tx-date"/>
-        </div>
-        <div class="form-field">
-          <label>Quantity</label>
-          <input type="number" id="tx-qty" placeholder="0" step="any"/>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Price per unit (INR)</label>
-          <input type="number" id="tx-price" placeholder="0.00" step="any"/>
-        </div>
-        <div class="form-field">
-          <label>Brokerage / Charges (INR)</label>
-          <input type="number" id="tx-charges" placeholder="0.00" step="any"/>
-        </div>
-      </div>
-      <div class="form-row full">
-        <div class="form-field">
-          <label>Notes</label>
-          <input type="text" id="tx-notes" placeholder="Optional notes"/>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('modal-tx')">Cancel</button>
-      <button class="btn-save" onclick="saveTransaction()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add Alert -->
-<div class="modal-overlay" id="modal-alert">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>New price alert</h3>
-      <button class="modal-close" onclick="closeModal('modal-alert')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <div class="form-field">
-          <label>Ticker *</label>
-          <select id="al-ticker"></select>
-        </div>
-        <div class="form-field">
-          <label>Alert type *</label>
-          <select id="al-type">
-            <option value="above">Price rises above</option>
-            <option value="below">Price falls below</option>
-            <option value="pct_up">Daily gain exceeds +%</option>
-            <option value="pct_down">Daily loss exceeds -%</option>
-            <option value="high52">52-week high breached</option>
-            <option value="low52">52-week low breached</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-field">
-          <label>Target value (INR or %)</label>
-          <input type="number" id="al-val" placeholder="e.g. 2500 or 5" step="any"/>
-        </div>
-        <div class="form-field">
-          <label>Email notification</label>
-          <select id="al-email">
-            <option value="0">No</option>
-            <option value="1">Yes (uses Resend API)</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('modal-alert')">Cancel</button>
-      <button class="btn-save" onclick="saveAlert()">Create alert</button>
-    </div>
-  </div>
-</div>
-
-<!-- Portfolio name modal -->
-<div class="modal-overlay" id="modal-portfolio">
-  <div class="modal" style="max-width:360px">
-    <div class="modal-head">
-      <h3>New portfolio</h3>
-      <button class="modal-close" onclick="closeModal('modal-portfolio')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row full">
-        <div class="form-field">
-          <label>Portfolio name</label>
-          <input type="text" id="pf-name" placeholder="e.g. ICICI Direct, ELSS, Retirement"/>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('modal-portfolio')">Cancel</button>
-      <button class="btn-save" onclick="createPortfolio()">Create</button>
-    </div>
-  </div>
-</div>
-
-<!-- Import merge modal -->
-<div class="modal-overlay" id="modal-merge">
-  <div class="modal" style="max-width:620px">
-    <div class="modal-head">
-      <h3>Review import — resolve conflicts</h3>
-      <button class="modal-close" onclick="closeModal('modal-merge')">×</button>
-    </div>
-    <div class="modal-body" style="padding-bottom:8px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">
-        Some tickers already exist in this portfolio. Choose what to do with each one.
-        New tickers (no conflict) will always be added.
-      </div>
-      <div class="merge-bulk">
-        <span style="font-size:11px;color:var(--text2);padding-top:5px">Select all:</span>
-        <button onclick="mergeSelectAll('update')">Update all</button>
-        <button onclick="mergeSelectAll('keep')">Keep all existing</button>
-        <button onclick="mergeSelectAll('add')">Add as new row</button>
-      </div>
-      <div class="merge-scroll" id="merge-list"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-cancel" onclick="closeModal('modal-merge')">Cancel import</button>
-      <button class="btn-save" onclick="confirmMerge()">Apply import</button>
-    </div>
-  </div>
-</div>
-
-<!-- Notification bar -->
-<div class="notif-bar" id="notif-bar"></div>
-
-<!-- FAB (add holding shortcut) -->
-<button class="fab" id="fab-btn" onclick="openAddHolding()" title="Add holding" style="display:none">+</button>
-
-<script>
-// ════════════════════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════════════════════
-let STATE = {
-  user: null,
-  currency: 'INR',
-  currentPortfolio: 'default',
-  portfolios: { default: 'Main Portfolio' },
-  holdings: {},       // { portfolioId: [holding, ...] }
-  transactions: {},   // { portfolioId: [tx, ...] }
-  alerts: [],
-  fxRates: { USD: 83.5, EUR: 90.2 }, // INR per unit; fallback
-  perfHistory: {},    // { portfolioId: [{date, value}] }
-  sortKey: 'value', sortDir: -1,
-  detailId: null,
-  settings: {}
-};
-
-// Chart instances
-let charts = {};
-
-// Credentials store (hashed in localStorage)
-const CREDS = {
-  admin: { pass: 'folio2024', role: 'owner' },
-  guest: { pass: 'view123',  role: 'guest'  }
-};
-
-// ════════════════════════════════════════════════════════════
-// BOOT
-// ════════════════════════════════════════════════════════════
-function boot() {
-  loadFromStorage();
-  fetchFX();
-  // Check if already logged in
-  const saved = ls('session');
-  if (saved) {
-    STATE.user = JSON.parse(saved);
-    showApp();
-  }
-  // Enter key on login
-  ['l-user','l-pass'].forEach(id =>
-    document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); }));
-}
-
-// ════════════════════════════════════════════════════════════
-// STORAGE HELPERS
-// ════════════════════════════════════════════════════════════
-function ls(k, v) {
-  if (v === undefined) { try { return localStorage.getItem(k); } catch(e) { return null; } }
-  try { localStorage.setItem(k, v); } catch(e) {}
-}
-function loadFromStorage() {
-  const d = ls('folio_data');
-  if (d) {
-    try {
-      const p = JSON.parse(d);
-      Object.assign(STATE, p);
-    } catch(e) {}
-  }
-  // Load settings
-  STATE.settings = JSON.parse(ls('folio_settings') || '{}');
-  if (STATE.settings.currency) STATE.currency = STATE.settings.currency;
-  // Ensure default portfolio exists
-  if (!STATE.portfolios) STATE.portfolios = { default: 'Main Portfolio' };
-  if (!STATE.holdings)    STATE.holdings   = {};
-  if (!STATE.transactions) STATE.transactions = {};
-  if (!STATE.perfHistory) STATE.perfHistory = {};
-  if (!STATE.alerts)      STATE.alerts = [];
-}
-function saveToStorage() {
-  const toSave = {
-    portfolios: STATE.portfolios,
-    holdings: STATE.holdings,
-    transactions: STATE.transactions,
-    perfHistory: STATE.perfHistory,
-    alerts: STATE.alerts,
-    currentPortfolio: STATE.currentPortfolio
-  };
-  ls('folio_data', JSON.stringify(toSave));
-}
-function saveSettings() {
-  ls('folio_settings', JSON.stringify(STATE.settings));
-}
-
-// ════════════════════════════════════════════════════════════
-// AUTH
-// ════════════════════════════════════════════════════════════
-function doLogin() {
-  const user = document.getElementById('l-user').value.trim();
-  const pass = document.getElementById('l-pass').value;
-  const err  = document.getElementById('l-err');
-
-  // Load custom creds
-  const customCreds = JSON.parse(ls('folio_creds') || '{}');
-  const allCreds = Object.assign({}, CREDS, customCreds);
-
-  const cred = allCreds[user.toLowerCase()];
-  if (!cred || cred.pass !== pass) {
-    err.textContent = 'Invalid username or password.';
-    return;
-  }
-  err.textContent = '';
-  STATE.user = { username: user, role: cred.role };
-  ls('session', JSON.stringify(STATE.user));
-  showApp();
-}
-
-function doLogout() {
-  STATE.user = null;
-  ls('session', '');
-  document.getElementById('page-app').classList.remove('active');
-  document.getElementById('page-app').style.display = 'none';
-  document.getElementById('page-login').classList.add('active');
-  document.getElementById('page-login').style.display = 'flex';
-  document.getElementById('l-pass').value = '';
-}
-
-function showApp() {
-  document.getElementById('page-login').classList.remove('active');
-  document.getElementById('page-login').style.display = 'none';
-  document.getElementById('page-app').classList.add('active');
-  document.getElementById('page-app').style.display = 'flex';
-
-  // Set user info
-  const u = STATE.user;
-  document.getElementById('sb-uname').textContent = u.username;
-  document.getElementById('sb-role').textContent = u.role === 'owner' ? 'Owner' : 'Read-only';
-  document.getElementById('sb-avatar').textContent = u.username[0].toUpperCase();
-
-  // Owner-only elements
-  const isOwner = u.role === 'owner';
-  ['add-holding-btn','add-tx-btn','add-alert-btn','fab-btn'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.style.display = isOwner ? '' : 'none';
-  });
-
-  buildPortfolioSelector();
-  setCurrencyUI();
-  loadSettingsUI();
-  nav('dashboard');
-  fetchFX();
-  setTimeout(checkAlerts, 3000);
-}
-
-// ════════════════════════════════════════════════════════════
-// NAVIGATION
-// ════════════════════════════════════════════════════════════
-function nav(view) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('view-'+view).classList.add('active');
-
-  // Match sidebar item
-  const labels = {dashboard:'Dashboard',holdings:'Holdings',consolidated:'Consolidated',performance:'Performance',
-    transactions:'Transactions',news:'News Feed',calendar:'Calendar',
-    alerts:'Alerts',import:'Import',settings:'Settings',detail:'Holding Detail'};
-  document.querySelectorAll('.sb-item').forEach(i => {
-    if (i.textContent.trim() === labels[view]) i.classList.add('active');
-  });
-  document.getElementById('topbar-title').textContent = labels[view] || '';
-  closeSidebar();
-
-  // Show/hide FAB
-  document.getElementById('fab-btn').style.display =
-    (['dashboard','holdings'].includes(view) && STATE.user?.role==='owner') ? 'flex' : 'none';
-
-  // Render view
-  const fns = {
-    dashboard: renderDashboard,
-    holdings: renderHoldingsTable,
-    consolidated: renderConsolidated,
-    performance: renderPerformance,
-    transactions: renderTxTable,
-    news: checkNewsKey,
-    calendar: renderCalendar,
-    alerts: renderAlerts,
-    settings: loadSettingsUI
-  };
-  if (fns[view]) fns[view]();
-}
-
-function openSidebar()  { document.getElementById('sidebar').classList.add('open'); document.getElementById('sb-overlay').classList.add('show'); }
-function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('show'); }
-
-// ════════════════════════════════════════════════════════════
-// CURRENCY
-// ════════════════════════════════════════════════════════════
-async function fetchFX() {
-  try {
-    const r = await fetch('https://api.frankfurter.app/latest?base=INR&symbols=USD,EUR');
-    const d = await r.json();
-    // d.rates = { USD: 0.012, EUR: 0.011 } (INR -> USD/EUR)
-    // We need USD/INR and EUR/INR
-    STATE.fxRates.USD = 1 / d.rates.USD;
-    STATE.fxRates.EUR = 1 / d.rates.EUR;
-    document.getElementById('fx-badge').textContent =
-      `1$ = ₹${STATE.fxRates.USD.toFixed(1)} · 1€ = ₹${STATE.fxRates.EUR.toFixed(1)}`;
-  } catch(e) {
-    document.getElementById('fx-badge').textContent = 'FX fallback';
-  }
-}
-
-function setCurrency(c) {
-  STATE.currency = c;
-  STATE.settings.currency = c;
-  saveSettings();
-  setCurrencyUI();
-  renderDashboard();
-  renderHoldingsTable();
-}
-function setCurrencyUI() {
-  document.querySelectorAll('.currency-sw button').forEach(b => {
-    b.classList.toggle('active', b.textContent.trim() === currSymbol(STATE.currency));
-  });
-  const sel = document.getElementById('default-currency');
-  if (sel) sel.value = STATE.currency;
-}
-
-function currSymbol(c) {
-  return c === 'INR' ? '₹' : c === 'EUR' ? '€' : '$';
-}
-function convertFromINR(inr) {
-  if (STATE.currency === 'INR') return inr;
-  if (STATE.currency === 'USD') return inr / STATE.fxRates.USD;
-  if (STATE.currency === 'EUR') return inr / STATE.fxRates.EUR;
-  return inr;
-}
-
-// Indian number formatting
-function fmtINR(n) {
-  if (isNaN(n) || n === null || n === undefined) return '—';
-  const sym = currSymbol(STATE.currency);
-  const val = convertFromINR(n);
-  const abs = Math.abs(val);
-  const sign = val < 0 ? '-' : '';
-  if (STATE.currency === 'INR') {
-    // Indian system
-    const fixed = abs.toFixed(2);
-    const [int, dec] = fixed.split('.');
-    const last3 = int.slice(-3);
-    const rest = int.slice(0, -3);
-    const formatted = rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3 : last3;
-    return sign + sym + ' ' + formatted + '.' + dec;
-  }
-  return sign + sym + ' ' + abs.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function fmtPct(n) {
-  if (isNaN(n)) return '—';
-  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
-}
-
-// ════════════════════════════════════════════════════════════
-// PORTFOLIOS
-// ════════════════════════════════════════════════════════════
-function buildPortfolioSelector() {
-  const sel = document.getElementById('portfolio-sel');
-  sel.innerHTML = Object.entries(STATE.portfolios)
-    .map(([id, name]) => `<option value="${id}" ${id === STATE.currentPortfolio ? 'selected' : ''}>${name}</option>`)
-    .join('');
-}
-function switchPortfolio() {
-  STATE.currentPortfolio = document.getElementById('portfolio-sel').value;
-  saveToStorage();
-  renderDashboard();
-  renderHoldingsTable();
-}
-function addPortfolio() {
-  document.getElementById('pf-name').value = '';
-  openModal('modal-portfolio');
-}
-function createPortfolio() {
-  const name = document.getElementById('pf-name').value.trim();
-  if (!name) return;
-  const id = 'pf_' + Date.now();
-  STATE.portfolios[id] = name;
-  STATE.currentPortfolio = id;
-  saveToStorage();
-  buildPortfolioSelector();
-  document.getElementById('portfolio-sel').value = id;
-  closeModal('modal-portfolio');
-  renderDashboard();
-}
-
-// ════════════════════════════════════════════════════════════
-// HOLDINGS CRUD
-// ════════════════════════════════════════════════════════════
-function getHoldings() {
-  return STATE.holdings[STATE.currentPortfolio] || [];
-}
-function setHoldings(arr) {
-  STATE.holdings[STATE.currentPortfolio] = arr;
-  saveToStorage();
-}
-
-function openAddHolding(id = null) {
-  const h = id !== null ? getHoldings().find(x => x.id === id) : null;
-  document.getElementById('mh-title').textContent = h ? 'Edit holding' : 'Add holding';
-  document.getElementById('h-ticker').value  = h?.ticker  || '';
-  document.getElementById('h-name').value    = h?.name    || '';
-  document.getElementById('h-type').value    = h?.type    || 'Stock';
-  document.getElementById('h-exchange').value= h?.exchange|| 'NSE';
-  document.getElementById('h-qty').value     = h?.qty     || '';
-  document.getElementById('h-avg').value     = h?.avg     || '';
-  document.getElementById('h-cur').value     = h?.cur     || '';
-  document.getElementById('h-sector').value  = h?.sector  || '';
-  document.getElementById('h-notes').value   = h?.notes   || '';
-  document.getElementById('h-ticker').dataset.editId = id || '';
-  openModal('modal-holding');
-}
-
-function saveHolding() {
-  const ticker  = document.getElementById('h-ticker').value.trim().toUpperCase();
-  const qty     = parseFloat(document.getElementById('h-qty').value) || 0;
-  if (!ticker || !qty) { notif('Ticker and quantity are required.'); return; }
-  const editId  = document.getElementById('h-ticker').dataset.editId;
-  const arr     = getHoldings();
-  const h = {
-    id:       editId || 'h_' + Date.now(),
-    ticker,
-    name:     document.getElementById('h-name').value.trim() || ticker,
-    type:     document.getElementById('h-type').value,
-    exchange: document.getElementById('h-exchange').value,
-    qty,
-    avg:      parseFloat(document.getElementById('h-avg').value) || 0,
-    cur:      parseFloat(document.getElementById('h-cur').value) || 0,
-    sector:   document.getElementById('h-sector').value.trim(),
-    notes:    document.getElementById('h-notes').value.trim(),
-    added:    new Date().toISOString()
-  };
-  if (editId) {
-    const idx = arr.findIndex(x => x.id === editId);
-    if (idx >= 0) arr[idx] = h; else arr.push(h);
-  } else {
-    arr.push(h);
-  }
-  setHoldings(arr);
-  closeModal('modal-holding');
-  renderDashboard();
-  renderHoldingsTable();
-  notif(`${h.name} saved.`);
-  recordPerfSnapshot();
-}
-
-function deleteHolding(id) {
-  if (!confirm('Delete this holding?')) return;
-  setHoldings(getHoldings().filter(h => h.id !== id));
-  nav('holdings');
-  notif('Holding deleted.');
-}
-
-function computeHolding(h) {
-  const cost  = (h.qty || 0) * (h.avg || 0);
-  // Use qty*cur if cur set, else use stored value field, else 0
-  const value = h.cur ? (h.qty || 0) * h.cur : (h.value || 0);
-  const pl    = cost && value ? value - cost : 0;
-  const plPct = cost && value ? (pl / cost) * 100 : 0;
-  return { ...h, cost, value, pl, plPct };
-}
-
-// ════════════════════════════════════════════════════════════
-// DASHBOARD
-// ════════════════════════════════════════════════════════════
-function renderDashboard() {
-  const holdings = getHoldings().map(computeHolding);
-  const totalValue = holdings.reduce((s,h) => s + h.value, 0);
-  const totalCost  = holdings.reduce((s,h) => s + h.cost,  0);
-  const totalPL    = totalValue - totalCost;
-  const totalPLPct = totalCost ? (totalPL / totalCost) * 100 : 0;
-  const best  = [...holdings].sort((a,b) => b.plPct - a.plPct)[0];
-  const worst = [...holdings].sort((a,b) => a.plPct - b.plPct)[0];
-
-  document.getElementById('sum-grid').innerHTML = `
-    <div class="sum-card c-gold fade">
-      <div class="sum-label">Total value</div>
-      <div class="sum-value">${fmtINR(totalValue)}</div>
-      <div class="sum-sub">${holdings.length} positions · ${Object.keys(STATE.portfolios).length} portfolio${Object.keys(STATE.portfolios).length>1?'s':''}</div>
-    </div>
-    <div class="sum-card c-teal fade fade-d1">
-      <div class="sum-label">Total invested</div>
-      <div class="sum-value">${fmtINR(totalCost)}</div>
-      <div class="sum-sub">Cost basis</div>
-    </div>
-    <div class="sum-card ${totalPL>=0?'c-gain':'c-loss'} fade fade-d2">
-      <div class="sum-label">Total P&L</div>
-      <div class="sum-value ${totalPL>=0?'gain':'loss'}">${fmtINR(totalPL)}</div>
-      <div class="sum-sub ${totalPL>=0?'gain':'loss'}">${fmtPct(totalPLPct)}</div>
-    </div>
-    <div class="sum-card c-blue fade fade-d3">
-      <div class="sum-label">Best performer</div>
-      <div class="sum-value" style="font-size:18px;color:var(--gain)">${best?.ticker||'—'}</div>
-      <div class="sum-sub gain">${best?fmtPct(best.plPct):''}</div>
-    </div>
-    <div class="sum-card c-blue fade fade-d4">
-      <div class="sum-label">Worst performer</div>
-      <div class="sum-value" style="font-size:18px;color:var(--loss)">${worst?.ticker||'—'}</div>
-      <div class="sum-sub loss">${worst?fmtPct(worst.plPct):''}</div>
-    </div>`;
-
-  renderAllocChart(holdings);
-  renderTypeChart(holdings);
-  renderExchChart(holdings);
-  renderDashTable(holdings);
-}
-
-const PALETTE = ['#e8b86d','#5db8a0','#7b9fd4','#b39ddb','#4caf82','#e8a84a','#e05555','#6db890','#a0b4d4'];
-
-function doughnutCfg(labels, data) {
-  return {
-    type:'doughnut',
-    data:{ labels, datasets:[{ data, backgroundColor: data.map((_,i)=>PALETTE[i%PALETTE.length]),
-      borderWidth:0, hoverOffset:6 }]},
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
-      plugins:{ legend:{ position:'right', labels:{ color:'#8a8880', font:{ size:11 }, boxWidth:10, padding:8 }},
-        tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${fmtINR(ctx.raw)}` }}}}
-  };
-}
-function destroyChart(id) { if(charts[id]) { charts[id].destroy(); delete charts[id]; } }
-
-function renderAllocChart(holdings) {
-  destroyChart('alloc');
-  const sorted = [...holdings].sort((a,b)=>b.value-a.value).slice(0,8);
-  charts.alloc = new Chart(document.getElementById('c-alloc'), doughnutCfg(sorted.map(h=>h.ticker), sorted.map(h=>h.value)));
-}
-function renderTypeChart(holdings) {
-  destroyChart('type');
-  const map = {};
-  holdings.forEach(h => { map[h.type] = (map[h.type]||0) + h.value; });
-  const keys = Object.keys(map).sort((a,b) => map[b]-map[a]);
-  const total = holdings.reduce((s,h)=>s+h.value,0);
-  charts.type = new Chart(document.getElementById('c-type'), {
-    type:'doughnut',
-    data:{ labels:keys, datasets:[{ data:keys.map(k=>map[k]),
-      backgroundColor: keys.map((_,i)=>PALETTE[i%PALETTE.length]),
-      borderWidth:0, hoverOffset:6 }]},
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
-      plugins:{ legend:{display:false},
-        tooltip:{ callbacks:{ label: ctx => {
-          const pct = total ? ((ctx.raw/total)*100).toFixed(1) : 0;
-          return ` ${ctx.label}: ${fmtINR(ctx.raw)} (${pct}%)`;
-        }}}}}
-  });
-  // Render percentage breakdown list below chart
-  const el = document.getElementById('type-breakdown');
-  if (!el) return;
-  el.innerHTML = keys.map((k,i) => {
-    const pct = total ? (map[k]/total*100) : 0;
-    return `<div class="breakdown-row">
-      <span class="breakdown-name">${badgeHTML(k)}</span>
-      <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
-      <span class="breakdown-pct">${pct.toFixed(1)}%</span>
-      <span class="breakdown-val">${fmtINR(map[k])}</span>
-    </div>`;
-  }).join('');
-}
-function renderExchChart(holdings) {
-  destroyChart('exch');
-  const map = {};
-  holdings.forEach(h => { const e=h.exchange||'NSE'; map[e]=(map[e]||0)+h.value; });
-  const keys = Object.keys(map);
-  charts.exch = new Chart(document.getElementById('c-exch'), doughnutCfg(keys, keys.map(k=>map[k])));
-}
-
-function renderDashTable(holdings) {
-  const sorted = [...holdings].sort((a,b)=>b.value-a.value).slice(0,8);
-  document.getElementById('dash-table').innerHTML = sorted.map(h => `
-    <tr onclick="openDetail('${h.id}')">
-      <td><span class="ticker-pill">${h.ticker}</span></td>
-      <td style="color:var(--text2)">${h.name}</td>
-      <td>${badgeHTML(h.type)}</td>
-      <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-      <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
-      <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:32px">No holdings yet. Import or add holdings.</td></tr>';
-}
-
-// ════════════════════════════════════════════════════════════
-// HOLDINGS TABLE
-// ════════════════════════════════════════════════════════════
-let sortKey = 'value', sortDir = -1;
-function sortBy(key) {
-  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
-  renderHoldingsTable();
-}
-function renderHoldingsTable() {
-  const q = (document.getElementById('search-holdings')?.value||'').toLowerCase();
-  let arr = getHoldings().map(computeHolding);
-  if (q) arr = arr.filter(h => h.ticker.toLowerCase().includes(q) || h.name.toLowerCase().includes(q));
-  arr.sort((a,b) => {
-    const va = a[sortKey] ?? 0, vb = b[sortKey] ?? 0;
-    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
-    return (va - vb) * sortDir;
-  });
-  document.getElementById('holdings-table').innerHTML = arr.map(h => `
-    <tr onclick="openDetail('${h.id}')">
-      <td><span class="ticker-pill">${h.ticker}</span></td>
-      <td>${h.name}</td>
-      <td>${badgeHTML(h.type)}</td>
-      <td><span style="font-size:11px;color:var(--text3)">${h.exchange||''}</span></td>
-      <td style="font-family:var(--fm)">${h.qty.toLocaleString()}</td>
-      <td style="font-family:var(--fm)">${h.avg ? fmtINR(h.avg) : '—'}</td>
-      <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-      <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
-      <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:32px">No holdings found.</td></tr>';
-}
-
-function badgeHTML(type) {
-  const map = { Stock:'badge-stock',MF:'badge-mf',ETF:'badge-etf',SGB:'badge-sgb',
-    REIT:'badge-reit',InvIT:'badge-invit',Intl:'badge-intl',Bond:'badge-bond',Other:'badge-other' };
-  return `<span class="badge ${map[type]||'badge-other'}">${type}</span>`;
-}
-
-// ════════════════════════════════════════════════════════════
-// HOLDING DETAIL
-// ════════════════════════════════════════════════════════════
-function openDetail(id) {
-  STATE.detailId = id;
-  const h = computeHolding(getHoldings().find(x => x.id === id));
-  if (!h) return;
-
-  document.getElementById('d-name').textContent = h.name;
-  document.getElementById('d-meta').innerHTML =
-    `${badgeHTML(h.type)} <span class="ticker-pill">${h.ticker}</span>
-     <span style="font-size:11px;color:var(--text3)">${h.exchange||''}</span>
-     ${h.sector ? `<span style="font-size:11px;color:var(--text2)">${h.sector}</span>` : ''}`;
-
-  document.getElementById('d-price').textContent = h.cur ? fmtINR(h.cur) : 'Price not set';
-  document.getElementById('d-change').innerHTML = h.cur && h.avg
-    ? `<span class="${h.pl>=0?'gain-t':'loss-t'}">${fmtPct(h.plPct)} from avg cost</span>` : '';
-
-  const isOwner = STATE.user?.role === 'owner';
-  document.getElementById('d-actions').innerHTML = isOwner ? `
-    <button class="btn-edit" onclick="openAddHolding('${id}')">Edit</button>
-    <button class="btn-del" onclick="deleteHolding('${id}')">Delete</button>` : '';
-
-  document.getElementById('d-metrics').innerHTML = `
-    <div class="metric"><div class="metric-label">Quantity</div><div class="metric-value">${h.qty.toLocaleString()}</div></div>
-    <div class="metric"><div class="metric-label">Avg buy price</div><div class="metric-value">${h.avg ? fmtINR(h.avg) : '—'}</div></div>
-    <div class="metric"><div class="metric-label">Current value</div><div class="metric-value">${fmtINR(h.value)}</div></div>
-    <div class="metric"><div class="metric-label">Cost basis</div><div class="metric-value">${fmtINR(h.cost)}</div></div>
-    <div class="metric"><div class="metric-label">P&L</div><div class="metric-value ${h.pl>=0?'gain-t':'loss-t'}">${fmtINR(h.pl)}</div></div>
-    <div class="metric"><div class="metric-label">P&L %</div><div class="metric-value ${h.plPct>=0?'gain-t':'loss-t'}">${fmtPct(h.plPct)}</div></div>`;
-
-  const notes = h.notes || 'No notes added.';
-  document.getElementById('d-notes').textContent = notes;
-
-  const txs = (STATE.transactions[STATE.currentPortfolio]||[]).filter(t => t.ticker === h.ticker);
-  document.getElementById('d-tx-table').innerHTML = txs.length
-    ? txs.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t => `
-        <tr>
-          <td>${t.date}</td>
-          <td><span class="tx-type tx-${t.type}">${t.type.toUpperCase()}</span></td>
-          <td style="font-family:var(--fm)">${t.qty||'—'}</td>
-          <td style="font-family:var(--fm)">${t.price ? fmtINR(t.price) : '—'}</td>
-          <td style="font-family:var(--fm)">${t.qty && t.price ? fmtINR(t.qty * t.price) : '—'}</td>
-          <td style="color:var(--text2)">${t.notes||''}</td>
-        </tr>`).join('')
-    : '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:24px">No transactions recorded.</td></tr>';
-
-  nav('detail');
-  fetchDetailNews(h.ticker, h.name);
-}
-
-// ════════════════════════════════════════════════════════════
-// PERFORMANCE
-// ════════════════════════════════════════════════════════════
-function recordPerfSnapshot() {
-  const holdings = getHoldings().map(computeHolding);
-  const value = holdings.reduce((s,h) => s+h.value, 0);
-  if (!value) return;
-  if (!STATE.perfHistory[STATE.currentPortfolio]) STATE.perfHistory[STATE.currentPortfolio] = [];
-  const today = new Date().toISOString().split('T')[0];
-  const hist = STATE.perfHistory[STATE.currentPortfolio];
-  const last = hist[hist.length-1];
-  if (last && last.date === today) { last.value = value; }
-  else { hist.push({ date: today, value }); }
-  if (hist.length > 400) hist.splice(0, hist.length - 400);
-  saveToStorage();
-}
-
-function setRange(r, btn) {
-  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderPerformance(r);
-}
-
-function renderPerformance(range = '1Y') {
-  const hist = [...(STATE.perfHistory[STATE.currentPortfolio] || [])];
-  // Add today's snapshot
-  recordPerfSnapshot();
-  const fullHist = STATE.perfHistory[STATE.currentPortfolio] || [];
-
-  if (fullHist.length < 2) {
-    // Generate demo data if empty
-    const demo = [];
-    for (let i = 365; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate()-i);
-      const date = d.toISOString().split('T')[0];
-      const holdings = getHoldings().map(computeHolding);
-      const base = holdings.reduce((s,h)=>s+h.value,0) || 1000000;
-      const rand = 1 + (Math.random()-0.45)*0.03;
-      demo.push({ date, value: base * (0.85 + i*0.0004) * rand });
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>Portfolio Tracker</title>
+
+  <style>
+    /* ==================================================
+       1. RESET + BASE
+    ================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    renderPerfChart(filterByRange(demo, range));
-    return;
-  }
-  renderPerfChart(filterByRange(fullHist, range));
-}
 
-function filterByRange(hist, range) {
-  const now = new Date();
-  const cutoff = new Date();
-  if (range==='1W')  cutoff.setDate(now.getDate()-7);
-  else if(range==='1M') cutoff.setMonth(now.getMonth()-1);
-  else if(range==='3M') cutoff.setMonth(now.getMonth()-3);
-  else if(range==='6M') cutoff.setMonth(now.getMonth()-6);
-  else if(range==='YTD') cutoff.setMonth(0,1);
-  else if(range==='1Y') cutoff.setFullYear(now.getFullYear()-1);
-  else return hist;
-  return hist.filter(p => new Date(p.date) >= cutoff);
-}
+    :root {
+      --bg: #0f172a;
+      --surface: #111827;
+      --surface-2: #1f2937;
+      --border: #374151;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      --radius: 14px;
+    }
 
-function renderPerfChart(data) {
-  destroyChart('perf');
-  charts.perf = new Chart(document.getElementById('c-perf'), {
-    type:'line',
-    data:{
-      labels: data.map(p=>p.date),
-      datasets:[{
-        data: data.map(p=>convertFromINR(p.value)),
-        borderColor:'#e8b86d', borderWidth:2, pointRadius:0, pointHoverRadius:4,
-        fill:true, backgroundColor:'rgba(232,184,109,.08)', tension:0.3
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false},
-        tooltip:{ callbacks:{ label: ctx => ` ${currSymbol(STATE.currency)} ${ctx.raw.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})}` }}},
-      scales:{
-        x:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#8a8880',maxTicksLimit:8,font:{size:11}} },
-        y:{ grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#8a8880',
-          callback: v => currSymbol(STATE.currency)+' '+Math.round(v).toLocaleString() }}
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3 {
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: var(--muted);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: white;
+    }
+
+    button.secondary {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .section {
+      margin-top: 24px;
+    }
+
+    .summary-card .value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .summary-card .label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .positive {
+      color: var(--success);
+    }
+
+    .negative {
+      color: var(--danger);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .empty-state,
+    .message-box {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      margin-top: 12px;
+    }
+
+    .message-box.error {
+      border-color: var(--danger);
+      color: #fecaca;
+    }
+
+    .message-box.success {
+      border-color: var(--success);
+      color: #bbf7d0;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 16px;
+      }
+
+      .grid-2,
+      .grid-3,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar,
+      .form-actions {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
       }
     }
-  });
-}
 
-// ════════════════════════════════════════════════════════════
-// TRANSACTIONS
-// ════════════════════════════════════════════════════════════
-function openAddTx(ticker=null) {
-  const sel = document.getElementById('tx-ticker');
-  const tickers = getHoldings().map(h=>h.ticker);
-  sel.innerHTML = tickers.map(t=>`<option value="${t}" ${t===ticker?'selected':''}>${t}</option>`).join('');
-  document.getElementById('tx-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('tx-qty').value = '';
-  document.getElementById('tx-price').value = '';
-  document.getElementById('tx-charges').value = '';
-  document.getElementById('tx-notes').value = '';
-  openModal('modal-tx');
-}
+    /* ==================================================
+       2. APP-SPECIFIC STYLES
+       Paste your existing custom styles below this line
+    ================================================== */
 
-function saveTransaction() {
-  const t = {
-    id:      'tx_'+Date.now(),
-    ticker:  document.getElementById('tx-ticker').value,
-    type:    document.getElementById('tx-type').value,
-    date:    document.getElementById('tx-date').value,
-    qty:     parseFloat(document.getElementById('tx-qty').value)||0,
-    price:   parseFloat(document.getElementById('tx-price').value)||0,
-    charges: parseFloat(document.getElementById('tx-charges').value)||0,
-    notes:   document.getElementById('tx-notes').value.trim()
-  };
-  if (!t.ticker || !t.date) { notif('Ticker and date required.'); return; }
-  if (!STATE.transactions[STATE.currentPortfolio]) STATE.transactions[STATE.currentPortfolio]=[];
-  STATE.transactions[STATE.currentPortfolio].push(t);
-  saveToStorage();
-  closeModal('modal-tx');
-  renderTxTable();
-  notif('Transaction saved.');
-}
 
-function renderTxTable() {
-  const txs = (STATE.transactions[STATE.currentPortfolio]||[]).sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.getElementById('tx-table').innerHTML = txs.map(t=>`
-    <tr>
-      <td>${t.date}</td>
-      <td><span class="ticker-pill">${t.ticker}</span></td>
-      <td><span class="tx-type tx-${t.type}">${t.type.toUpperCase()}</span></td>
-      <td style="font-family:var(--fm)">${t.qty||'—'}</td>
-      <td style="font-family:var(--fm)">${t.price?fmtINR(t.price):'—'}</td>
-      <td style="font-family:var(--fm)">${t.qty&&t.price?fmtINR(t.qty*t.price):'—'}</td>
-      <td style="font-family:var(--fm)">${t.charges?fmtINR(t.charges):'—'}</td>
-      <td style="color:var(--text2)">${t.notes||''}</td>
-    </tr>`).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:32px">No transactions yet.</td></tr>';
-}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ==================================================
+         3. APP HEADER
+    ================================================== -->
+    <header class="section">
+      <h1>Portfolio Tracker</h1>
+      <p>Track holdings, performance, and transactions.</p>
+    </header>
 
-// ════════════════════════════════════════════════════════════
-// ALERTS
-// ════════════════════════════════════════════════════════════
-function openAddAlert() {
-  const sel = document.getElementById('al-ticker');
-  sel.innerHTML = getHoldings().map(h=>`<option value="${h.ticker}">${h.ticker}</option>`).join('');
-  document.getElementById('al-val').value='';
-  openModal('modal-alert');
-}
-function saveAlert() {
-  const a = {
-    id:     'al_'+Date.now(),
-    ticker: document.getElementById('al-ticker').value,
-    type:   document.getElementById('al-type').value,
-    val:    parseFloat(document.getElementById('al-val').value)||0,
-    email:  document.getElementById('al-email').value==='1',
-    active: true, fired: false
-  };
-  if (!a.ticker) return;
-  STATE.alerts.push(a);
-  saveToStorage();
-  closeModal('modal-alert');
-  renderAlerts();
-  notif('Alert created.');
-}
-function renderAlerts() {
-  const el = document.getElementById('alert-list');
-  const isOwner = STATE.user?.role==='owner';
-  if (!STATE.alerts.length) {
-    el.innerHTML='<div class="empty"><h3>No alerts set</h3><p>Add an alert to get notified when a holding hits your target.</p></div>';
-    return;
-  }
-  el.innerHTML = STATE.alerts.map(a=>{
-    const desc = alertDesc(a);
-    return `<div class="alert-row ${a.fired?'triggered':''}">
-      <span class="alert-ticker">${a.ticker}</span>
-      <div class="alert-desc">${desc}</div>
-      <div class="alert-val">${a.type.includes('pct')||a.type.includes('52')?'':'Target: '+fmtINR(a.val)}</div>
-      <span class="alert-status ${a.fired?'fired':a.active?'on':'off'}"></span>
-      ${isOwner?`<label class="toggle-sw"><input type="checkbox" ${a.active?'checked':''} onchange="toggleAlert('${a.id}',this.checked)">
-        <div class="toggle-track"><div class="toggle-thumb"></div></div></label>
-        <button style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px" onclick="deleteAlert('${a.id}')">×</button>`:''}
-    </div>`;
-  }).join('');
-}
-function alertDesc(a){
-  const m={above:`Price above ${fmtINR(a.val)}`,below:`Price below ${fmtINR(a.val)}`,
-    pct_up:`Daily gain > ${a.val}%`,pct_down:`Daily loss > ${a.val}%`,
-    high52:'52-week high breached',low52:'52-week low breached'};
-  return m[a.type]||a.type;
-}
-function toggleAlert(id,active){
-  const a=STATE.alerts.find(x=>x.id===id);
-  if(a){a.active=active;saveToStorage();}
-}
-function deleteAlert(id){
-  STATE.alerts=STATE.alerts.filter(x=>x.id!==id);
-  saveToStorage(); renderAlerts();
-}
-function checkAlerts(){
-  const holdings=getHoldings().map(computeHolding);
-  const fired=[];
-  STATE.alerts.forEach(a=>{
-    if(!a.active||a.fired) return;
-    const h=holdings.find(x=>x.ticker===a.ticker);
-    if(!h||!h.cur) return;
-    let trigger=false;
-    if(a.type==='above'&&h.cur>a.val) trigger=true;
-    if(a.type==='below'&&h.cur<a.val) trigger=true;
-    if(a.type==='pct_up'&&h.plPct>a.val) trigger=true;
-    if(a.type==='pct_down'&&h.plPct<-a.val) trigger=true;
-    if(trigger){ a.fired=true; fired.push(`${a.ticker}: ${alertDesc(a)}`); }
-  });
-  if(fired.length){
-    saveToStorage();
-    const banner=document.getElementById('triggered-banner');
-    banner.innerHTML='🔔 Alert triggered: '+fired.join(' · ');
-    banner.style.display='block';
-    notif('Alert triggered: '+fired[0]);
-  }
-}
+    <!-- ==================================================
+         4. SUMMARY SECTION
+    ================================================== -->
+    <section class="section">
+      <div class="grid grid-3" id="summaryCards">
+        <div class="card summary-card">
+          <div class="label">Total Value</div>
+          <div class="value" id="totalValue">$0.00</div>
+        </div>
 
-// ════════════════════════════════════════════════════════════
-// NEWS
-// ════════════════════════════════════════════════════════════
-function checkNewsKey(){
-  const key=STATE.settings.newsapi||'';
-  document.getElementById('news-api-warn').style.display=key?'none':'block';
-  if(key) fetchAllNews();
-}
-async function fetchAllNews(){
-  const key=STATE.settings.newsapi||'';
-  if(!key){ document.getElementById('news-api-warn').style.display='block'; return; }
-  const tickers=getHoldings().map(h=>h.ticker).slice(0,6);
-  if(!tickers.length){ document.getElementById('news-grid').innerHTML='<div class="empty"><h3>Add holdings first</h3></div>'; return; }
-  document.getElementById('news-spin').innerHTML='<span class="spinner"></span>';
-  try{
-    const q=tickers.join(' OR ');
-    const url=`https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&sortBy=publishedAt&pageSize=12&language=en&apiKey=${key}`;
-    const r=await fetch(url);
-    const d=await r.json();
-    if(d.status!=='ok') throw new Error(d.message);
-    renderNews(d.articles,tickers);
-  } catch(e){
-    document.getElementById('news-grid').innerHTML=`<div class="empty"><h3>Could not load news</h3><p>${e.message}</p></div>`;
-  } finally{ document.getElementById('news-spin').innerHTML=''; }
-}
-function renderNews(articles,tickers){
-  if(!articles.length){ document.getElementById('news-grid').innerHTML='<div class="empty"><h3>No articles found</h3></div>'; return; }
-  document.getElementById('news-grid').innerHTML=articles.map(a=>{
-    const rel=tickers.find(t=>(a.title+a.description+'').toUpperCase().includes(t));
-    const d=new Date(a.publishedAt);
-    const ago=timeSince(d);
-    return `<div class="news-card" onclick="window.open('${a.url}','_blank')">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span class="news-src">${a.source.name}</span>
-        ${rel?`<span class="ticker-pill" style="font-size:10px">${rel}</span>`:''}
+        <div class="card summary-card">
+          <div class="label">Total Cost</div>
+          <div class="value" id="totalCost">$0.00</div>
+        </div>
+
+        <div class="card summary-card">
+          <div class="label">Gain / Loss</div>
+          <div class="value" id="totalGainLoss">$0.00</div>
+        </div>
       </div>
-      <div class="news-hl">${a.title}</div>
-      <div class="news-meta">${ago}</div>
-    </div>`;
-  }).join('');
-}
-function timeSince(d){
-  const s=Math.floor((Date.now()-d)/1000);
-  if(s<3600) return Math.floor(s/60)+'m ago';
-  if(s<86400) return Math.floor(s/3600)+'h ago';
-  return Math.floor(s/86400)+'d ago';
-}
+    </section>
 
-// ════════════════════════════════════════════════════════════
-// CALENDAR
-// ════════════════════════════════════════════════════════════
-async function renderCalendar(){
-  renderEarnings();
-  renderEcoEvents();
-}
-
-async function renderEarnings(){
-  const el=document.getElementById('earn-list');
-  const tickers=getHoldings().map(h=>h.ticker).filter(t=>!/^\d/.test(t));
-  if(!tickers.length){el.innerHTML='<div class="cal-empty" style="padding:20px;text-align:center;color:var(--text2)">No stock tickers in portfolio.</div>';return;}
-  try{
-    const today=new Date().toISOString().split('T')[0];
-    const end=new Date(Date.now()+90*24*60*60*1000).toISOString().split('T')[0];
-    const r=await fetch(`https://financialmodelingprep.com/api/v3/earning_calendar?from=${today}&to=${end}&apikey=demo`);
-    const data=await r.json();
-    const rel=Array.isArray(data)?data.filter(e=>tickers.includes(e.symbol)):[];
-    if(!rel.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">No upcoming earnings found for your holdings in the next 90 days.</div>';return;}
-    el.innerHTML=rel.slice(0,12).map(e=>{
-      const d=new Date(e.date);
-      return `<div class="cal-row">
-        <div class="cal-date"><div class="cal-day">${d.getDate()}</div><div class="cal-mon">${d.toLocaleString('en',{month:'short'})}</div></div>
-        <span class="ticker-pill">${e.symbol}</span>
-        <div class="cal-info"><div class="cal-name">${e.symbol} — Q${Math.ceil((d.getMonth()+1)/3)} Results</div></div>
-        <div class="cal-right"><div class="timing">${e.time==='bmo'?'Before open':e.time==='amc'?'After close':'TBD'}</div></div>
-      </div>`;
-    }).join('');
-  } catch(e){
-    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">Could not load earnings calendar.</div>';
-  }
-}
-
-function renderEcoEvents(){
-  const el=document.getElementById('eco-list');
-  // Static upcoming events (updated periodically — user can refresh page)
-  const events=[
-    {date:'2025-08-06',name:'RBI MPC Policy Decision',country:'IN',impact:'H',prev:'6.50%',forecast:'6.25%'},
-    {date:'2025-08-12',name:'India CPI Inflation (Jul)',country:'IN',impact:'H',prev:'5.08%',forecast:'4.9%'},
-    {date:'2025-08-14',name:'India WPI Inflation (Jul)',country:'IN',impact:'M',prev:'3.36%',forecast:'3.1%'},
-    {date:'2025-08-29',name:'India GDP Q1 FY26',country:'IN',impact:'H',prev:'7.4%',forecast:'7.1%'},
-    {date:'2025-08-01',name:'US Non-Farm Payrolls (Jul)',country:'US',impact:'H',prev:'206K',forecast:'185K'},
-    {date:'2025-08-13',name:'US CPI Inflation (Jul)',country:'US',impact:'H',prev:'3.0%',forecast:'2.9%'},
-    {date:'2025-09-17',name:'FOMC Interest Rate Decision',country:'US',impact:'H',prev:'5.25-5.50%',forecast:'5.00-5.25%'},
-    {date:'2025-09-12',name:'ECB Rate Decision',country:'EU',impact:'H',prev:'4.25%',forecast:'4.00%'},
-    {date:'2025-08-15',name:'India Independence Day (Market holiday)',country:'IN',impact:'L',prev:'—',forecast:'—'},
-  ].filter(e=>new Date(e.date)>=new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date));
-
-  el.innerHTML=events.map(e=>{
-    const d=new Date(e.date);
-    const flag={IN:'🇮🇳',US:'🇺🇸',EU:'🇪🇺'}[e.country]||'';
-    const impCls={H:'impact-h',M:'impact-m',L:'impact-l'}[e.impact];
-    return `<div class="cal-row">
-      <div class="cal-date"><div class="cal-day">${d.getDate()}</div><div class="cal-mon">${d.toLocaleString('en',{month:'short'})}</div></div>
-      <div class="cal-info">
-        <div class="cal-name">${flag} ${e.name}</div>
-        <div class="cal-sub">Prev: ${e.prev} · Forecast: ${e.forecast}</div>
+    <!-- ==================================================
+         5. ACTIONS / FILTERS
+    ================================================== -->
+    <section class="section card">
+      <h2>Actions</h2>
+      <div class="toolbar">
+        <button id="addSampleDataBtn">Add Sample Data</button>
+        <button class="secondary" id="exportBtn">Export Data</button>
+        <button class="secondary" id="clearBtn">Clear All</button>
       </div>
-      <div class="cal-right"><span class="impact ${impCls}">${e.impact==='H'?'High':e.impact==='M'?'Medium':'Low'}</span></div>
-    </div>`;
-  }).join('') || '<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">No upcoming events.</div>';
-}
 
-// ════════════════════════════════════════════════════════════
-// IMPORT / CSV / XLSX
-// ════════════════════════════════════════════════════════════
-let rawHeaders=[], rawRows=[];
+      <div class="message-box" id="appMessage" style="display:none;"></div>
+    </section>
 
-function handleFile(file){
-  if(!file) return;
-  const ext=file.name.split('.').pop().toLowerCase();
-  if(ext==='xlsx'||ext==='xls'){
-    const reader=new FileReader();
-    reader.onload=e=>{
-      const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const data=XLSX.utils.sheet_to_json(ws,{header:1});
-      rawHeaders=data[0].map(String);
-      rawRows=data.slice(1).map(row=>{
-        const obj={};
-        rawHeaders.forEach((h,i)=>{ obj[h]=row[i]!==undefined?String(row[i]):''; });
-        return obj;
+    <!-- ==================================================
+         6. TRANSACTION FORM
+    ================================================== -->
+    <section class="section card">
+      <h2>Add Transaction</h2>
+
+      <form id="transactionForm">
+        <div class="form-grid">
+          <div>
+            <label for="symbol">Symbol</label>
+            <input id="symbol" name="symbol" type="text" placeholder="AAPL" />
+          </div>
+
+          <div>
+            <label for="type">Type</label>
+            <select id="type" name="type">
+              <option value="buy">Buy</option>
+              <option value="sell">Sell</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="quantity">Quantity</label>
+            <input id="quantity" name="quantity" type="number" step="any" placeholder="10" />
+          </div>
+
+          <div>
+            <label for="price">Price</label>
+            <input id="price" name="price" type="number" step="any" placeholder="150" />
+          </div>
+
+          <div>
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date" />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit">Save Transaction</button>
+          <button type="button" class="secondary" id="resetFormBtn">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ==================================================
+         7. HOLDINGS TABLE
+    ================================================== -->
+    <section class="section card">
+      <h2>Holdings</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Quantity</th>
+              <th>Avg Cost</th>
+              <th>Current Price</th>
+              <th>Value</th>
+              <th>Gain/Loss</th>
+            </tr>
+          </thead>
+          <tbody id="holdingsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" id="holdingsEmptyState">
+        No holdings yet. Add a transaction to get started.
+      </div>
+    </section>
+
+    <!-- ==================================================
+         8. TRANSACTIONS TABLE
+    ================================================== -->
+    <section class="section card">
+      <h2>Transactions</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Symbol</th>
+              <th>Type</th>
+              <th>Quantity</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+          <tbody id="transactionsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" id="transactionsEmptyState">
+        No transactions yet.
+      </div>
+    </section>
+
+    <!-- ==================================================
+         9. APP UI PLACEHOLDER
+         Paste more of your existing HTML here if needed
+    ================================================== -->
+
+
+  </div>
+
+  <script>
+    /* ==================================================
+       10. APP STATE
+       Keep all global app data in one place
+    ================================================== */
+    const state = {
+      transactions: [],
+      holdings: [],
+      prices: {},
+      totals: {
+        totalValue: 0,
+        totalCost: 0,
+        gainLoss: 0
+      }
+    };
+
+    /* ==================================================
+       11. CONSTANTS + DOM REFERENCES
+    ================================================== */
+    const dom = {
+      totalValue: document.getElementById('totalValue'),
+      totalCost: document.getElementById('totalCost'),
+      totalGainLoss: document.getElementById('totalGainLoss'),
+
+      holdingsTableBody: document.getElementById('holdingsTableBody'),
+      transactionsTableBody: document.getElementById('transactionsTableBody'),
+
+      holdingsEmptyState: document.getElementById('holdingsEmptyState'),
+      transactionsEmptyState: document.getElementById('transactionsEmptyState'),
+
+      transactionForm: document.getElementById('transactionForm'),
+      symbol: document.getElementById('symbol'),
+      type: document.getElementById('type'),
+      quantity: document.getElementById('quantity'),
+      price: document.getElementById('price'),
+      date: document.getElementById('date'),
+
+      addSampleDataBtn: document.getElementById('addSampleDataBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      resetFormBtn: document.getElementById('resetFormBtn'),
+      appMessage: document.getElementById('appMessage')
+    };
+
+    /* ==================================================
+       12. UTILITY FUNCTIONS
+    ================================================== */
+    function formatCurrency(value) {
+      const number = Number(value || 0);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      }).format(number);
+    }
+
+    function showMessage(message, type = 'success') {
+      dom.appMessage.textContent = message;
+      dom.appMessage.className = `message-box ${type}`;
+      dom.appMessage.style.display = 'block';
+
+      setTimeout(() => {
+        dom.appMessage.style.display = 'none';
+      }, 2500);
+    }
+
+    function getFormData() {
+      return {
+        symbol: dom.symbol.value.trim().toUpperCase(),
+        type: dom.type.value,
+        quantity: Number(dom.quantity.value),
+        price: Number(dom.price.value),
+        date: dom.date.value
+      };
+    }
+
+    function resetForm() {
+      dom.transactionForm.reset();
+    }
+
+    /* ==================================================
+       13. VALIDATION
+    ================================================== */
+    function validateTransaction(data) {
+      if (!data.symbol) return 'Symbol is required';
+      if (!data.type) return 'Transaction type is required';
+      if (!data.quantity || data.quantity <= 0) return 'Quantity must be greater than 0';
+      if (!data.price || data.price <= 0) return 'Price must be greater than 0';
+      if (!data.date) return 'Date is required';
+      return null;
+    }
+
+    /* ==================================================
+       14. STORAGE
+       If you already use browser storage, paste it here
+    ================================================== */
+    function saveToStorage() {
+      localStorage.setItem('portfolio-tracker-data', JSON.stringify(state.transactions));
+    }
+
+    function loadFromStorage() {
+      const saved = localStorage.getItem('portfolio-tracker-data');
+      state.transactions = saved ? JSON.parse(saved) : [];
+    }
+
+    /* ==================================================
+       15. PORTFOLIO CALCULATIONS
+       Put pure math/data functions here
+    ================================================== */
+    function calculateHoldings(transactions) {
+      const map = {};
+
+      transactions.forEach((tx) => {
+        if (!map[tx.symbol]) {
+          map[tx.symbol] = {
+            symbol: tx.symbol,
+            quantity: 0,
+            totalCost: 0,
+            avgCost: 0,
+            currentPrice: tx.price,
+            value: 0,
+            gainLoss: 0
+          };
+        }
+
+        const item = map[tx.symbol];
+
+        if (tx.type === 'buy') {
+          item.totalCost += tx.quantity * tx.price;
+          item.quantity += tx.quantity;
+        } else if (tx.type === 'sell') {
+          item.quantity -= tx.quantity;
+        }
+
+        if (item.quantity > 0) {
+          item.avgCost = item.totalCost / item.quantity;
+          item.currentPrice = tx.price;
+          item.value = item.quantity * item.currentPrice;
+          item.gainLoss = item.value - item.totalCost;
+        } else {
+          item.avgCost = 0;
+          item.value = 0;
+          item.gainLoss = 0;
+        }
       });
-      showMapper();
-    };
-    reader.readAsArrayBuffer(file);
-  } else {
-    // CSV or TXT
-    Papa.parse(file,{
-      header:true,skipEmptyLines:true,
-      complete:r=>{ rawHeaders=r.meta.fields||[]; rawRows=r.data; showMapper(); }
-    });
-  }
-}
 
-function autoDetect(field,headers){
-  const p={
-    ticker:[/ticker/i,/symbol/i,/scrip/i,/isin/i,/code/i,/script/i],
-    name:[/name/i,/company/i,/security/i,/description/i,/product/i,/fund/i],
-    qty:[/qty/i,/quantity/i,/shares/i,/units/i,/holding/i,/balance/i],
-    avg:[/avg/i,/average/i,/cost/i,/buy/i,/purchase/i,/rate/i],
-    cur:[/current.*price/i,/ltp/i,/last/i,/market.*price/i,/nav/i,/close/i],
-    value:[/value/i,/market.*value/i,/amount/i,/total/i,/current.*value/i],
-    type:[/type/i,/asset/i,/category/i,/class/i,/instrument/i],
-    exchange:[/exchange/i,/market/i,/exch/i]
-  };
-  return headers.find(h=>(p[field]||[]).some(rx=>rx.test(h)))||'';
-}
+      return Object.values(map).filter(item => item.quantity > 0);
+    }
 
-const MAPPER_FIELDS=[
-  {key:'ticker',label:'Ticker / Symbol'},
-  {key:'name',label:'Company / Fund name'},
-  {key:'qty',label:'Quantity / Units'},
-  {key:'avg',label:'Avg buy price'},
-  {key:'cur',label:'Current price'},
-  {key:'value',label:'Current value'},
-  {key:'type',label:'Asset type'},
-  {key:'exchange',label:'Exchange'},
-];
+    function calculateTotals(holdings) {
+      return holdings.reduce(
+        (acc, item) => {
+          acc.totalValue += item.value;
+          acc.totalCost += item.totalCost;
+          acc.gainLoss += item.gainLoss;
+          return acc;
+        },
+        { totalValue: 0, totalCost: 0, gainLoss: 0 }
+      );
+    }
 
-function showMapper(){
-  const grid=document.getElementById('mapper-grid');
-  grid.innerHTML=MAPPER_FIELDS.map(f=>{
-    const match=autoDetect(f.key,rawHeaders);
-    return `<div class="mf">
-      <label>${f.label}</label>
-      <select id="map-${f.key}">
-        <option value="">— skip —</option>
-        ${rawHeaders.map(h=>`<option value="${h}" ${h===match?'selected':''}>${h}</option>`).join('')}
-      </select></div>`;
-  }).join('');
-  document.getElementById('mapper').style.display='block';
-}
+    /* ==================================================
+       16. RENDER FUNCTIONS
+       Put all DOM update code here
+    ================================================== */
+    function renderSummary() {
+      dom.totalValue.textContent = formatCurrency(state.totals.totalValue);
+      dom.totalCost.textContent = formatCurrency(state.totals.totalCost);
+      dom.totalGainLoss.textContent = formatCurrency(state.totals.gainLoss);
 
-function loadSample(){
-  const sample=[
-    {ticker:'RELIANCE',name:'Reliance Industries Ltd',type:'Stock',exchange:'NSE',qty:50,avg:2650,cur:2890,notes:'Core holding — energy & telecom'},
-    {ticker:'HDFCBANK',name:'HDFC Bank Ltd',type:'Stock',exchange:'NSE',qty:80,avg:1550,cur:1620,notes:''},
-    {ticker:'NIFTYBEES',name:'Nippon India ETF Nifty BeES',type:'ETF',exchange:'NSE',qty:200,avg:215,cur:238,notes:'Index core allocation'},
-    {ticker:'GOLDBEES',name:'Nippon India ETF Gold BeES',type:'ETF',exchange:'NSE',qty:100,avg:52,cur:61,notes:'Gold hedge'},
-    {ticker:'AXISBANK',name:'Axis Bank Ltd',type:'Stock',exchange:'NSE',qty:120,avg:980,cur:1105,notes:''},
-    {ticker:'SGB2028',name:'Sovereign Gold Bond 2028',type:'SGB',exchange:'NSE',qty:10,avg:5800,cur:7200,notes:'Matures 2028 · 2.5% coupon'},
-    {ticker:'EMBASSYREIT',name:'Embassy Office Parks REIT',type:'REIT',exchange:'NSE',qty:300,avg:340,cur:365,notes:'Quarterly distributions'},
-    {ticker:'HDFCMFBF',name:'HDFC Balanced Advantage Fund',type:'MF',exchange:'BSE',qty:1500,avg:88,cur:102,notes:'SIP — Rs.5000/month'},
-    {ticker:'INDIGRID',name:'IndiGrid InvIT',type:'InvIT',exchange:'NSE',qty:500,avg:130,cur:142,notes:'Power transmission infrastructure'},
-    {ticker:'AAPL',name:'Apple Inc.',type:'Intl',exchange:'Intl',qty:5,avg:170,cur:189,notes:'USD-denominated — converted at live FX'},
-  ].map(h=>({...h,id:'h_'+Date.now()+'_'+Math.random().toString(36).slice(2),added:new Date().toISOString()}));
-  setHoldings(sample);
-  recordPerfSnapshot();
-  nav('dashboard');
-  notif('Sample portfolio loaded.');
-}
+      dom.totalGainLoss.classList.remove('positive', 'negative');
+      dom.totalGainLoss.classList.add(state.totals.gainLoss >= 0 ? 'positive' : 'negative');
+    }
 
-// ════════════════════════════════════════════════════════════
-// CONSOLIDATED VIEW
-// ════════════════════════════════════════════════════════════
-let consolidatedTab = 'all';
-function renderConsolidated() {
-  const pfIds = Object.keys(STATE.portfolios);
-  const tabs = document.getElementById('consolidated-tabs');
-  tabs.innerHTML = `
-    <button class="view-tab ${consolidatedTab==='all'?'active':''}" onclick="setConsolidatedTab('all')">All brokers</button>
-    ${pfIds.map(id => `<button class="view-tab ${consolidatedTab===id?'active':''}" onclick="setConsolidatedTab('${id}')">${STATE.portfolios[id]}</button>`).join('')}`;
-  renderConsolidatedBody();
-}
-function setConsolidatedTab(id) {
-  consolidatedTab = id;
-  renderConsolidated();
-}
-function renderConsolidatedBody() {
-  const body = document.getElementById('consolidated-body');
-  if (consolidatedTab === 'all') {
-    // Show all portfolios aggregated + individual broker sections
-    const pfIds = Object.keys(STATE.portfolios);
-    // Grand total row
-    let allHoldings = [];
-    pfIds.forEach(id => {
-      const hs = (STATE.holdings[id]||[]).map(computeHolding).map(h=>({...h, _portfolio:id}));
-      allHoldings = allHoldings.concat(hs);
-    });
-    const grandValue = allHoldings.reduce((s,h)=>s+h.value,0);
-    const grandCost  = allHoldings.reduce((s,h)=>s+h.cost,0);
-    const grandPL    = grandValue - grandCost;
-    const grandPLPct = grandCost ? (grandPL/grandCost*100) : 0;
+    function renderHoldings() {
+      dom.holdingsTableBody.innerHTML = '';
 
-    // Asset type breakdown across all
-    const typeMap = {};
-    allHoldings.forEach(h => { typeMap[h.type]=(typeMap[h.type]||0)+h.value; });
-    const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
+      if (state.holdings.length === 0) {
+        dom.holdingsEmptyState.style.display = 'block';
+        return;
+      }
 
-    body.innerHTML = `
-      <!-- Grand totals -->
-      <div class="summary-grid fade" style="margin-bottom:24px">
-        <div class="sum-card c-gold">
-          <div class="sum-label">Grand total value</div>
-          <div class="sum-value">${fmtINR(grandValue)}</div>
-          <div class="sum-sub">${allHoldings.length} positions across ${pfIds.length} broker${pfIds.length>1?'s':''}</div>
-        </div>
-        <div class="sum-card c-teal">
-          <div class="sum-label">Total invested</div>
-          <div class="sum-value">${fmtINR(grandCost)}</div>
-          <div class="sum-sub">Cost basis all brokers</div>
-        </div>
-        <div class="sum-card ${grandPL>=0?'c-gain':'c-loss'}">
-          <div class="sum-label">Total P&L</div>
-          <div class="sum-value ${grandPL>=0?'gain':'loss'}">${fmtINR(grandPL)}</div>
-          <div class="sum-sub ${grandPL>=0?'gain':'loss'}">${fmtPct(grandPLPct)}</div>
-        </div>
-      </div>
+      dom.holdingsEmptyState.style.display = 'none';
 
-      <!-- Asset type breakdown across all brokers -->
-      <div class="card card-p fade" style="margin-bottom:24px">
-        <div class="card-title">Asset type breakdown — all brokers</div>
-        ${typeKeys.map((k,i)=>{
-          const pct = grandValue ? (typeMap[k]/grandValue*100) : 0;
-          return `<div class="breakdown-row">
-            <span class="breakdown-name">${badgeHTML(k)}</span>
-            <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
-            <span class="breakdown-pct">${pct.toFixed(1)}%</span>
-            <span class="breakdown-val">${fmtINR(typeMap[k])}</span>
-          </div>`;
-        }).join('')}
-      </div>
-
-      <!-- Per-broker sections -->
-      ${pfIds.map(id => brokerSectionHTML(id, grandValue)).join('')}
-
-      <!-- Combined holdings table -->
-      <div class="card" style="margin-top:24px">
-        <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text)">All holdings</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Broker</th><th>Value</th><th>P&L</th><th>P&L %</th></tr></thead>
-            <tbody>${allHoldings.sort((a,b)=>b.value-a.value).map(h=>`
-              <tr onclick="switchToPortfolioAndDetail('${h._portfolio}','${h.id}')">
-                <td><span class="ticker-pill">${h.ticker}</span></td>
-                <td>${h.name}</td>
-                <td>${badgeHTML(h.type)}</td>
-                <td><span style="font-size:11px;color:var(--text2)">${STATE.portfolios[h._portfolio]||h._portfolio}</span></td>
-                <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-                <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
-                <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>`;
-  } else {
-    // Single broker view
-    const id = consolidatedTab;
-    const hs = (STATE.holdings[id]||[]).map(computeHolding);
-    const val = hs.reduce((s,h)=>s+h.value,0);
-    const cost = hs.reduce((s,h)=>s+h.cost,0);
-    const pl = val-cost;
-    const plPct = cost?(pl/cost*100):0;
-    const typeMap = {};
-    hs.forEach(h=>{ typeMap[h.type]=(typeMap[h.type]||0)+h.value; });
-    const typeKeys = Object.keys(typeMap).sort((a,b)=>typeMap[b]-typeMap[a]);
-
-    body.innerHTML = `
-      <div class="summary-grid fade" style="margin-bottom:24px">
-        <div class="sum-card c-gold">
-          <div class="sum-label">Portfolio value</div>
-          <div class="sum-value">${fmtINR(val)}</div>
-          <div class="sum-sub">${hs.length} positions</div>
-        </div>
-        <div class="sum-card c-teal">
-          <div class="sum-label">Invested</div>
-          <div class="sum-value">${fmtINR(cost)}</div>
-        </div>
-        <div class="sum-card ${pl>=0?'c-gain':'c-loss'}">
-          <div class="sum-label">P&L</div>
-          <div class="sum-value ${pl>=0?'gain':'loss'}">${fmtINR(pl)}</div>
-          <div class="sum-sub ${pl>=0?'gain':'loss'}">${fmtPct(plPct)}</div>
-        </div>
-      </div>
-      <div class="card card-p fade" style="margin-bottom:24px">
-        <div class="card-title">Asset type breakdown</div>
-        ${typeKeys.map((k,i)=>{
-          const pct = val?(typeMap[k]/val*100):0;
-          return `<div class="breakdown-row">
-            <span class="breakdown-name">${badgeHTML(k)}</span>
-            <div class="breakdown-bar-wrap"><div class="breakdown-bar" style="width:${pct.toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}"></div></div>
-            <span class="breakdown-pct">${pct.toFixed(1)}%</span>
-            <span class="breakdown-val">${fmtINR(typeMap[k])}</span>
-          </div>`;
-        }).join('')}
-      </div>
-      <div class="card">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Qty</th><th>Avg</th><th>Value</th><th>P&L</th><th>P&L %</th></tr></thead>
-            <tbody>${hs.sort((a,b)=>b.value-a.value).map(h=>`
-              <tr onclick="switchToPortfolioAndDetail('${id}','${h.id}')">
-                <td><span class="ticker-pill">${h.ticker}</span></td>
-                <td>${h.name}</td>
-                <td>${badgeHTML(h.type)}</td>
-                <td style="font-family:var(--fm)">${h.qty.toLocaleString()}</td>
-                <td style="font-family:var(--fm)">${h.avg?fmtINR(h.avg):'—'}</td>
-                <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-                <td class="${h.pl>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtINR(h.pl)}</td>
-                <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-              </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>`;
-  }
-}
-
-function brokerSectionHTML(id, grandTotal) {
-  const hs = (STATE.holdings[id]||[]).map(computeHolding);
-  if (!hs.length) return '';
-  const val  = hs.reduce((s,h)=>s+h.value,0);
-  const cost = hs.reduce((s,h)=>s+h.cost,0);
-  const pl   = val-cost;
-  const plPct= cost?(pl/cost*100):0;
-  const portPct = grandTotal?(val/grandTotal*100):0;
-  return `<div class="broker-section">
-    <div class="broker-header">
-      <div class="broker-name">${STATE.portfolios[id]||id}</div>
-      <div class="broker-stats">
-        <div class="broker-stat"><div class="broker-stat-label">Value</div><div class="broker-stat-value">${fmtINR(val)}</div></div>
-        <div class="broker-stat"><div class="broker-stat-label">Of total</div><div class="broker-stat-value" style="color:var(--accent)">${portPct.toFixed(1)}%</div></div>
-        <div class="broker-stat"><div class="broker-stat-label">P&L</div><div class="broker-stat-value ${pl>=0?'gain-t':'loss-t'}">${fmtINR(pl)} (${fmtPct(plPct)})</div></div>
-      </div>
-    </div>
-    <div class="card"><div class="table-wrap">
-      <table><thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Value</th><th>Allocation</th><th>P&L %</th></tr></thead>
-      <tbody>${hs.sort((a,b)=>b.value-a.value).slice(0,6).map(h=>`
-        <tr onclick="switchToPortfolioAndDetail('${id}','${h.id}')">
-          <td><span class="ticker-pill">${h.ticker}</span></td>
-          <td>${h.name}</td>
-          <td>${badgeHTML(h.type)}</td>
-          <td style="font-family:var(--fm)">${fmtINR(h.value)}</td>
-          <td style="font-family:var(--fm);color:var(--text2)">${val?(h.value/val*100).toFixed(1):0}%</td>
-          <td class="${h.plPct>=0?'gain-t':'loss-t'}" style="font-family:var(--fm)">${fmtPct(h.plPct)}</td>
-        </tr>`).join('')}
-      </tbody></table>
-    </div></div>
-    ${hs.length>6?`<div style="font-size:11px;color:var(--text2);text-align:right;margin-top:8px;cursor:pointer" onclick="setConsolidatedTab('${id}')">+${hs.length-6} more in ${STATE.portfolios[id]} →</div>`:''}</div>`;
-}
-
-function switchToPortfolioAndDetail(pfId, holdingId) {
-  STATE.currentPortfolio = pfId;
-  document.getElementById('portfolio-sel').value = pfId;
-  openDetail(holdingId);
-}
-
-// ════════════════════════════════════════════════════════════
-// IMPORT MERGE LOGIC
-// ════════════════════════════════════════════════════════════
-let pendingImport = []; // [{holding, isNew, action}]
-
-function applyMapping() {
-  const map = {};
-  MAPPER_FIELDS.forEach(f => { map[f.key] = document.getElementById('map-'+f.key).value; });
-  const get = (row, k) => map[k] ? (row[map[k]] || '') : '';
-  const clean = s => parseFloat(String(s).replace(/[^0-9.\-]/g,'')) || 0;
-
-  const imported = rawRows.map(row => {
-    const qty    = clean(get(row,'qty'));
-    const avg    = clean(get(row,'avg'));
-    const cur    = clean(get(row,'cur'));
-    const val    = clean(get(row,'value')) || qty * cur;
-    const ticker = (get(row,'ticker') || '').toString().trim().toUpperCase();
-    if (!ticker || !qty) return null;
-    return {
-      id: 'h_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-      ticker, name: get(row,'name') || ticker,
-      type: get(row,'type') || 'Stock',
-      exchange: get(row,'exchange') || 'NSE',
-      qty, avg, cur, value: val,
-      notes: '', added: new Date().toISOString()
-    };
-  }).filter(Boolean);
-
-  document.getElementById('mapper').style.display = 'none';
-  document.getElementById('file-input').value = '';
-
-  const existing = getHoldings();
-  const conflicts = [];
-  const newOnes   = [];
-
-  imported.forEach(h => {
-    const dup = existing.find(e => e.ticker === h.ticker);
-    if (dup) conflicts.push({ holding: h, existing: dup, action: 'update' });
-    else newOnes.push({ holding: h, isNew: true, action: 'add' });
-  });
-
-  if (!conflicts.length) {
-    // No conflicts — just add new ones
-    const arr = [...existing, ...newOnes.map(x => x.holding)];
-    setHoldings(arr);
-    recordPerfSnapshot();
-    nav('dashboard');
-    notif(`Imported ${newOnes.length} new holding${newOnes.length!==1?'s':''}.`);
-    return;
-  }
-
-  // Show merge modal
-  pendingImport = [...conflicts, ...newOnes];
-  showMergeModal(conflicts, newOnes);
-}
-
-function showMergeModal(conflicts, newOnes) {
-  const list = document.getElementById('merge-list');
-  list.innerHTML = conflicts.map((c, i) => `
-    <div class="merge-row" id="mrow-${i}">
-      <span class="merge-ticker">${c.holding.ticker}</span>
-      <div class="merge-info">
-        <b>${c.holding.name}</b><br/>
-        <span>Existing: Qty ${c.existing.qty} · Avg ${c.existing.avg ? fmtINR(c.existing.avg) : '—'}</span><br/>
-        <span>Incoming: Qty ${c.holding.qty} · Avg ${c.holding.avg ? fmtINR(c.holding.avg) : '—'}</span>
-      </div>
-      <div class="merge-action">
-        <button class="mbtn active-update" id="mbtn-${i}-update" onclick="setMergeAction(${i},'update')">Replace</button>
-        <button class="mbtn" id="mbtn-${i}-keep" onclick="setMergeAction(${i},'keep')">Keep old</button>
-        <button class="mbtn" id="mbtn-${i}-add" onclick="setMergeAction(${i},'add')">Add both</button>
-      </div>
-    </div>`).join('') +
-    (newOnes.length ? `<div style="padding:12px 0 4px;font-size:11px;color:var(--text2)">
-      ${newOnes.length} new ticker${newOnes.length>1?'s':''} will be added automatically:
-      ${newOnes.map(x=>`<span class="ticker-pill" style="font-size:10px;margin:2px">${x.holding.ticker}</span>`).join(' ')}
-    </div>` : '');
-  openModal('modal-merge');
-}
-
-function setMergeAction(i, action) {
-  pendingImport[i].action = action;
-  ['update','keep','add'].forEach(a => {
-    const btn = document.getElementById(`mbtn-${i}-${a}`);
-    if (btn) btn.className = 'mbtn' + (a === action ? ` active-${a}` : '');
-  });
-}
-
-function mergeSelectAll(action) {
-  pendingImport.forEach((item, i) => {
-    if (!item.isNew) {
-      item.action = action;
-      ['update','keep','add'].forEach(a => {
-        const btn = document.getElementById(`mbtn-${i}-${a}`);
-        if (btn) btn.className = 'mbtn' + (a === action ? ` active-${a}` : '');
+      state.holdings.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.symbol}</td>
+          <td>${item.quantity}</td>
+          <td>${formatCurrency(item.avgCost)}</td>
+          <td>${formatCurrency(item.currentPrice)}</td>
+          <td>${formatCurrency(item.value)}</td>
+          <td class="${item.gainLoss >= 0 ? 'positive' : 'negative'}">
+            ${formatCurrency(item.gainLoss)}
+          </td>
+        `;
+        dom.holdingsTableBody.appendChild(tr);
       });
     }
-  });
-}
 
-function confirmMerge() {
-  let arr = [...getHoldings()];
-  pendingImport.forEach(item => {
-    const h = item.holding;
-    if (item.isNew || item.action === 'add') {
-      // Always add new, or add as separate row
-      h.id = 'h_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-      arr.push(h);
-    } else if (item.action === 'update') {
-      const idx = arr.findIndex(e => e.ticker === h.ticker);
-      if (idx >= 0) arr[idx] = { ...arr[idx], ...h, id: arr[idx].id, notes: arr[idx].notes || h.notes };
+    function renderTransactions() {
+      dom.transactionsTableBody.innerHTML = '';
+
+      if (state.transactions.length === 0) {
+        dom.transactionsEmptyState.style.display = 'block';
+        return;
+      }
+
+      dom.transactionsEmptyState.style.display = 'none';
+
+      state.transactions
+        .slice()
+        .reverse()
+        .forEach((tx) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${tx.date}</td>
+            <td>${tx.symbol}</td>
+            <td>${tx.type}</td>
+            <td>${tx.quantity}</td>
+            <td>${formatCurrency(tx.price)}</td>
+          `;
+          dom.transactionsTableBody.appendChild(tr);
+        });
     }
-    // 'keep' → do nothing, existing stays
-  });
-  setHoldings(arr);
-  recordPerfSnapshot();
-  closeModal('modal-merge');
-  nav('dashboard');
-  const added   = pendingImport.filter(x=>x.isNew||x.action==='add').length;
-  const updated = pendingImport.filter(x=>!x.isNew&&x.action==='update').length;
-  const kept    = pendingImport.filter(x=>!x.isNew&&x.action==='keep').length;
-  notif(`Import done: ${added} added, ${updated} updated, ${kept} unchanged.`);
-  pendingImport = [];
-}
 
-// ════════════════════════════════════════════════════════════
-// HOLDING DETAIL NEWS
-// ════════════════════════════════════════════════════════════
-async function fetchDetailNews(ticker, name) {
-  const key = STATE.settings.newsapi || '';
-  const el  = document.getElementById('d-news-list');
-  const src = document.getElementById('d-news-src');
-  if (!el) return;
-  if (!key) {
-    el.innerHTML = `<div style="font-size:12px;color:var(--text3)">Add a NewsAPI key in <span style="color:var(--accent);cursor:pointer" onclick="nav('settings')">Settings</span> to load news.</div>`;
-    return;
-  }
-  document.getElementById('d-news-spin').innerHTML = '<span class="spinner"></span>';
-  try {
-    const q = encodeURIComponent(`${ticker} OR "${name.split(' ').slice(0,3).join(' ')}"`);
-    const r = await fetch(`https://newsapi.org/v2/everything?q=${q}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${key}`);
-    const d = await r.json();
-    if (d.status !== 'ok') throw new Error(d.message);
-    if (!d.articles.length) {
-      el.innerHTML = '<div style="font-size:12px;color:var(--text3)">No recent articles found for this holding.</div>';
-      return;
+    function renderApp() {
+      renderSummary();
+      renderHoldings();
+      renderTransactions();
     }
-    src.textContent = 'via NewsAPI';
-    el.innerHTML = d.articles.map(a => `
-      <div class="news-mini-card" onclick="window.open('${a.url}','_blank')">
-        <div class="news-mini-src">${a.source.name}</div>
-        <div class="news-mini-hl">${a.title}</div>
-        <div class="news-mini-ago">${timeSince(new Date(a.publishedAt))}</div>
-      </div>`).join('');
-  } catch(e) {
-    el.innerHTML = `<div style="font-size:12px;color:var(--text3)">${e.message}</div>`;
-  } finally {
-    const sp = document.getElementById('d-news-spin');
-    if (sp) sp.innerHTML = '';
-  }
-}
 
-// ════════════════════════════════════════════════════════════
-// SETTINGS
-// ════════════════════════════════════════════════════════════
-function loadSettingsUI(){
-  document.getElementById('newsapi-key').value=STATE.settings.newsapi||'';
-  document.getElementById('av-key').value=STATE.settings.av||'';
-  document.getElementById('resend-key').value=STATE.settings.resend||'';
-  document.getElementById('alert-email').value=STATE.settings.email||'';
-  document.getElementById('default-currency').value=STATE.currency;
-}
-function saveKey(k){
-  const ids={newsapi:'newsapi-key',av:'av-key',resend:'resend-key',email:'alert-email'};
-  STATE.settings[k]=document.getElementById(ids[k]).value.trim();
-  saveSettings();
-  notif('Saved.');
-}
-function saveDefaultCurrency(){
-  setCurrency(document.getElementById('default-currency').value);
-  notif('Default currency updated.');
-}
-function changePassword(){
-  const p=document.getElementById('new-pass').value;
-  if(!p||p.length<4){notif('Password must be at least 4 characters.');return;}
-  const creds=JSON.parse(ls('folio_creds')||'{}');
-  creds['admin']={pass:p,role:'owner'};
-  ls('folio_creds',JSON.stringify(creds));
-  document.getElementById('new-pass').value='';
-  notif('Password updated. Use it next time you log in.');
-}
-function exportCSV(){
-  const h=getHoldings().map(computeHolding);
-  const rows=[['Ticker','Name','Type','Exchange','Qty','Avg Price','Current Price','Value','P&L','P&L%']];
-  h.forEach(x=>rows.push([x.ticker,x.name,x.type,x.exchange,x.qty,x.avg,x.cur,x.value.toFixed(2),x.pl.toFixed(2),x.plPct.toFixed(2)]));
-  const csv=rows.map(r=>r.join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='portfolio_export.csv'; a.click();
-}
-function clearAllData(){
-  if(!confirm('This will delete ALL your holdings, transactions and alerts from this browser. Are you sure?')) return;
-  STATE.holdings={}; STATE.transactions={}; STATE.perfHistory={}; STATE.alerts=[];
-  saveToStorage(); nav('dashboard'); notif('All data cleared.');
-}
+    /* ==================================================
+       17. STATE UPDATE FLOW
+       All recalculation should happen here
+    ================================================== */
+    function recalculateApp() {
+      state.holdings = calculateHoldings(state.transactions);
+      state.totals = calculateTotals(state.holdings);
+      saveToStorage();
+      renderApp();
+    }
 
-// ════════════════════════════════════════════════════════════
-// MODALS & UTILS
-// ════════════════════════════════════════════════════════════
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-// Close modal on overlay click
-document.querySelectorAll('.modal-overlay').forEach(o=>{
-  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
-});
-// Close on Escape
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
+    /* ==================================================
+       18. EVENT HANDLERS
+    ================================================== */
+    function handleTransactionSubmit(event) {
+      event.preventDefault();
 
-function notif(msg){
-  const bar=document.getElementById('notif-bar');
-  bar.textContent=msg; bar.classList.add('show');
-  setTimeout(()=>bar.classList.remove('show'),3200);
-}
+      const data = getFormData();
+      const error = validateTransaction(data);
 
-// Drag and drop for upload zone
-const zone=document.getElementById('upload-zone');
-zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
-zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
-zone.addEventListener('drop',e=>{
-  e.preventDefault(); zone.classList.remove('drag');
-  const f=e.dataTransfer.files[0]; if(f) handleFile(f);
-});
+      if (error) {
+        showMessage(error, 'error');
+        return;
+      }
 
-// ════════════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════════════
-boot();
-</script>
+      state.transactions.push(data);
+      recalculateApp();
+      resetForm();
+      showMessage('Transaction added');
+    }
+
+    function handleAddSampleData() {
+      state.transactions = [
+        { symbol: 'AAPL', type: 'buy', quantity: 10, price: 150, date: '2026-01-10' },
+        { symbol: 'MSFT', type: 'buy', quantity: 5, price: 300, date: '2026-02-01' },
+        { symbol: 'GOOGL', type: 'buy', quantity: 3, price: 2000, date: '2026-03-01' }
+      ];
+
+      recalculateApp();
+      showMessage('Sample data added');
+    }
+
+    function handleExport() {
+      const blob = new Blob([JSON.stringify(state.transactions, null, 2)], {
+        type: 'application/json'
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'portfolio-data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function handleClearAll() {
+      const confirmed = confirm('Are you sure you want to clear all transactions?');
+      if (!confirmed) return;
+
+      state.transactions = [];
+      recalculateApp();
+      showMessage('All data cleared');
+    }
+
+    /* ==================================================
+       19. EVENT BINDING
+    ================================================== */
+    function bindEvents() {
+      dom.transactionForm.addEventListener('submit', handleTransactionSubmit);
+      dom.addSampleDataBtn.addEventListener('click', handleAddSampleData);
+      dom.exportBtn.addEventListener('click', handleExport);
+      dom.clearBtn.addEventListener('click', handleClearAll);
+      dom.resetFormBtn.addEventListener('click', resetForm);
+    }
+
+    /* ==================================================
+       20. APP INIT
+    ================================================== */
+    function initApp() {
+      loadFromStorage();
+      bindEvents();
+      recalculateApp();
+    }
+
+    initApp();
+
+    /* ==================================================
+       21. YOUR EXISTING APP CODE
+       Paste remaining functions below gradually
+    ================================================== */
+
+
+  </script>
 </body>
 </html>
