@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -112,6 +113,39 @@ input,select,textarea{font-family:var(--ff);outline:none;box-sizing:border-box}
 .s-sub.gain{color:var(--gain)}.s-sub.loss{color:var(--loss)}
 .charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:18px}
 .chart-wrap{position:relative;height:180px}
+/* New dashboard layout */
+.dash-perf-row{display:grid;grid-template-columns:2fr 1fr;gap:11px;margin-bottom:18px}
+.dash-bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
+.dash-alloc-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:18px}
+.perf-range{display:flex;gap:3px;margin-bottom:10px}
+.pr-btn{padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:20px;
+  color:var(--text2);font-size:10px;font-family:var(--ff);cursor:pointer;transition:all .15s}
+.pr-btn.active{background:var(--accent);border-color:var(--accent);color:#080c10}
+.pr-btn:hover:not(.active){border-color:var(--border2);color:var(--text)}
+/* Dashboard news */
+.dash-news-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+.dash-news-item{padding:10px 12px;border:1px solid var(--border);border-radius:var(--r2);
+  cursor:pointer;transition:border-color .15s;background:var(--bg3)}
+.dash-news-item:hover{border-color:var(--border2)}
+.dn-src{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:3px;font-weight:600}
+.dn-hl{font-size:11px;color:var(--text);line-height:1.5}
+.dn-meta{font-size:10px;color:var(--text3);margin-top:3px}
+/* PDF extraction UI */
+.pdf-extract-result{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);
+  padding:16px;margin-top:14px;display:none}
+.pdf-extract-result h4{font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px}
+.pdf-raw-text{font-family:var(--fm);font-size:10px;color:var(--text2);max-height:160px;
+  overflow-y:auto;white-space:pre-wrap;background:var(--bg4);border-radius:var(--r2);
+  padding:10px;margin-bottom:12px;line-height:1.6}
+.pdf-parsed-table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px}
+.pdf-parsed-table th{padding:6px 9px;background:var(--bg4);color:var(--text2);font-size:9px;
+  text-transform:uppercase;letter-spacing:.07em;text-align:left}
+.pdf-parsed-table td{padding:6px 9px;border-bottom:1px solid var(--border);color:var(--text)}
+.pdf-parsed-table tr:last-child td{border-bottom:none}
+.pdf-row-edit{font-family:var(--fm);font-size:10px;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:3px;color:var(--text);padding:2px 5px;width:100%}
+.pdf-import-btn{padding:8px 18px;background:var(--accent2);border:none;border-radius:var(--r2);
+  color:#0a1a15;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--ff)}
 .breakdown-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
 .breakdown-row:last-child{border-bottom:none}
 .breakdown-name{font-size:10px;color:var(--text2);min-width:50px}
@@ -426,20 +460,71 @@ textarea.ff-input{resize:vertical;min-height:68px}
   <div class="content">
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
+      <!-- Summary cards -->
       <div class="sum-grid" id="sum-grid"></div>
-      <div class="charts-row">
-        <div class="card card-p fade d1"><div class="card-title">Allocation by holding</div><div class="chart-wrap"><canvas id="c-alloc"></canvas></div></div>
-        <div class="card card-p fade d2" style="overflow:hidden"><div class="card-title">By asset type</div><div class="chart-wrap"><canvas id="c-type"></canvas></div><div id="type-breakdown" style="margin-top:11px"></div></div>
-        <div class="card card-p fade d3"><div class="card-title">By exchange</div><div class="chart-wrap"><canvas id="c-exch"></canvas></div></div>
+
+      <!-- Row 1: Performance chart (2/3) + Asset type breakdown (1/3) -->
+      <div class="dash-perf-row fade d1">
+        <div class="card card-p">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div class="card-title" style="margin:0">Portfolio performance</div>
+            <div class="perf-range" id="dash-range-btns">
+              <button class="pr-btn active" onclick="dashSetRange('1M',this)">1M</button>
+              <button class="pr-btn" onclick="dashSetRange('3M',this)">3M</button>
+              <button class="pr-btn" onclick="dashSetRange('6M',this)">6M</button>
+              <button class="pr-btn" onclick="dashSetRange('1Y',this)">1Y</button>
+              <button class="pr-btn" onclick="dashSetRange('ALL',this)">All</button>
+            </div>
+          </div>
+          <div style="position:relative;height:200px"><canvas id="c-dash-perf"></canvas></div>
+          <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap" id="dash-perf-stats"></div>
+        </div>
+        <div class="card card-p" style="overflow:hidden">
+          <div class="card-title">Asset allocation</div>
+          <div style="position:relative;height:160px"><canvas id="c-type"></canvas></div>
+          <div id="type-breakdown" style="margin-top:10px"></div>
+        </div>
       </div>
-      <div class="card fade d4">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0">
+
+      <!-- Row 2: P&L by holding bar chart (left) + Top movers (right) -->
+      <div class="dash-bottom-row fade d2">
+        <div class="card card-p">
+          <div class="card-title">P&amp;L by holding</div>
+          <div style="position:relative;height:200px"><canvas id="c-pnl-bar"></canvas></div>
+        </div>
+        <div class="card card-p">
+          <div class="card-title">Today&#39;s movers <span style="font-size:9px;color:var(--text3);font-weight:400" id="movers-time"></span></div>
+          <div id="dash-movers"></div>
+        </div>
+      </div>
+
+      <!-- Row 3: Holdings table -->
+      <div class="card fade d3" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px 0">
           <div class="card-title" style="margin:0">Holdings &mdash; <span id="dash-pf-name" style="color:var(--accent)"></span></div>
           <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="nav('holdings')">View all &#8594;</span>
         </div>
-        <div class="table-wrap" style="margin-top:9px">
+        <div class="table-wrap" style="margin-top:8px">
           <table><thead><tr><th>Ticker</th><th>Name</th><th>Type</th><th>Price</th><th>Value</th><th>P&amp;L</th><th>P&amp;L %</th><th>Weight</th></tr></thead>
           <tbody id="dash-table"></tbody></table>
+        </div>
+      </div>
+
+      <!-- Row 4: News feed -->
+      <div class="card card-p fade d4">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">News feed <span id="dash-news-spin"></span></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:10px;color:var(--text3)" id="dash-news-src"></span>
+            <button onclick="fetchDashNews()" style="background:none;border:1px solid var(--border2);border-radius:var(--r2);color:var(--text2);font-size:10px;padding:3px 9px;cursor:pointer;font-family:var(--ff);transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">Refresh</button>
+            <span style="font-size:11px;color:var(--accent);cursor:pointer" onclick="nav('news')">Full feed &#8594;</span>
+          </div>
+        </div>
+        <div id="dash-news-warn" style="display:none;font-size:11px;color:var(--text3);padding:8px 0">
+          Add a NewsAPI key in <span style="color:var(--accent);cursor:pointer" onclick="nav('settings')">Settings</span> to load live news for your holdings.
+        </div>
+        <div class="dash-news-list" id="dash-news-list">
+          <div style="font-size:11px;color:var(--text3)">Loading news&#8230;</div>
         </div>
       </div>
     </div>
@@ -594,13 +679,45 @@ textarea.ff-input{resize:vertical;min-height:68px}
     <div class="view" id="view-import">
       <div style="font-size:16px;font-weight:600;margin-bottom:14px">Import Portfolio</div>
       <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
-        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.txt" onchange="handleFile(this.files[0])"/>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.txt,.pdf" onchange="handleFile(this.files[0])"/>
         <svg style="width:36px;height:36px;margin:0 auto 13px;display:block;color:var(--text3)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4M8 8l4-4 4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div class="uz-title">Drop your portfolio file here</div>
-        <div class="uz-sub">ICICI Direct &amp; Spark (Geojit) auto-detected. Any broker CSV/XLSX supported.<br/><a onclick="event.stopPropagation();loadSample()">Load sample data to preview &#8594;</a></div>
-        <div class="uz-fmts"><span class="uz-fmt">CSV</span><span class="uz-fmt">XLSX</span><span class="uz-fmt">XLS</span></div>
+        <div class="uz-sub">ICICI Direct &amp; Spark (Geojit) auto-detected. CSV/XLSX from any broker supported.<br/>
+          <strong style="color:var(--accent2)">PDF holdings statements now supported</strong> — text is extracted and parsed automatically.<br/>
+          <a onclick="event.stopPropagation();loadSample()">Load sample data to preview &#8594;</a></div>
+        <div class="uz-fmts">
+          <span class="uz-fmt">CSV</span><span class="uz-fmt">XLSX</span><span class="uz-fmt">XLS</span>
+          <span class="uz-fmt" style="border-color:var(--accent2);color:var(--accent2)">PDF</span>
+        </div>
         <button class="uz-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose file</button>
       </div>
+
+      <!-- PDF extraction panel -->
+      <div class="pdf-extract-result" id="pdf-extract-result">
+        <h4>&#128196; PDF extracted — review &amp; confirm before importing</h4>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px">The parser identified the holdings below from your PDF. Edit any field before importing. Unrecognised rows are excluded.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div style="font-size:10px;color:var(--text3)">Raw extracted text:</div>
+          <button onclick="togglePdfRaw()" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:9px;padding:2px 7px;cursor:pointer;font-family:var(--ff)">Toggle</button>
+        </div>
+        <div class="pdf-raw-text" id="pdf-raw-text" style="display:none"></div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:600" id="pdf-found-label"></div>
+        <div style="overflow-x:auto;margin-bottom:12px">
+          <table class="pdf-parsed-table">
+            <thead><tr>
+              <th>Ticker / Code</th><th>Name</th><th>Type</th><th>Qty</th>
+              <th>Avg Price (INR)</th><th>Current Price (INR)</th><th>&#10005;</th>
+            </tr></thead>
+            <tbody id="pdf-rows"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="pdf-import-btn" onclick="importPdfHoldings()">&#10003; Import holdings</button>
+          <button class="btn-cancel" onclick="document.getElementById('pdf-extract-result').style.display='none';document.getElementById('file-input').value=''">Cancel</button>
+          <span style="font-size:10px;color:var(--text3)" id="pdf-import-status"></span>
+        </div>
+      </div>
+
       <div class="mapper" id="mapper">
         <h3>Map your columns</h3>
         <p>Auto-detected below. Match each field to your file&#39;s column, then click Import.</p>
@@ -1278,6 +1395,14 @@ function doughnutCfg(labels,data){
 }
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 
+let dashPerfRange='1M';
+function dashSetRange(r,btn){
+  dashPerfRange=r;
+  document.querySelectorAll('#dash-range-btns .pr-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderDashPerfChart();
+}
+
 function renderDashboard(){
   recordAllSnapshots();updateGrandBar();
   const hs=getH().map(computeH);
@@ -1289,6 +1414,7 @@ function renderDashboard(){
   const worst=withCost.length?[...withCost].sort((a,b)=>a.plPct-b.plPct)[0]:null;
   const dg=dayGain();
   document.getElementById('dash-pf-name').textContent=S.portfolios[S.currentPortfolio]||'';
+
   document.getElementById('sum-grid').innerHTML=`
     <div class="sum-card c-gold fade"><div class="s-label">Portfolio value</div><div class="s-value">${fmtM(val)}</div><div class="s-sub">${hs.length} positions</div></div>
     <div class="sum-card c-teal fade d1"><div class="s-label">Invested</div><div class="s-value">${fmtM(cost)}</div><div class="s-sub">Cost basis</div></div>
@@ -1297,13 +1423,150 @@ function renderDashboard(){
     <div class="sum-card ${dg?(dg.abs>=0?'c-gain':'c-loss'):'c-blue'} fade d4"><div class="s-label">Today's change</div><div class="s-value ${dg?(dg.abs>=0?'gain':'loss'):''}">${dg?fmtM(dg.abs):'&mdash;'}</div><div class="s-sub ${dg?(dg.abs>=0?'gain':'loss'):''}">${dg?fmtPct(dg.pct):'No prior data yet'}</div></div>
     <div class="sum-card c-blue fade d4"><div class="s-label">Best performer</div><div class="s-value" style="font-size:16px;color:var(--gain)">${best?best.ticker:'&mdash;'}</div><div class="s-sub gain">${best?fmtPct(best.plPct):''}</div></div>
     <div class="sum-card c-blue fade d4"><div class="s-label">Worst performer</div><div class="s-value" style="font-size:16px;color:var(--loss)">${worst?worst.ticker:'&mdash;'}</div><div class="s-sub loss">${worst?fmtPct(worst.plPct):''}</div></div>`;
-  renderAllocChart(hs);renderTypeChart(hs,val);renderExchChart(hs);renderDashTable(hs,val);
+
+  renderDashPerfChart();
+  renderTypeChart(hs,val);
+  renderPnlBarChart(hs);
+  renderMovers(hs);
+  renderDashTable(hs,val);
+  fetchDashNews();
 }
-function renderAllocChart(hs){
-  destroyChart('alloc');
-  const sorted=[...hs].sort((a,b)=>b.value-a.value).slice(0,9);if(!sorted.length)return;
-  charts.alloc=new Chart(document.getElementById('c-alloc'),doughnutCfg(sorted.map(h=>h.ticker),sorted.map(h=>h.value)));
+
+// Performance line chart on dashboard
+function renderDashPerfChart(){
+  destroyChart('dash-perf');
+  const hist=S.perfHistory[S.currentPortfolio]||[];
+  const statsEl=document.getElementById('dash-perf-stats');
+  if(hist.length<2){
+    statsEl.innerHTML=`<span style="font-size:11px;color:var(--text3)">Snapshots recorded daily as you use the app. Performance chart will appear soon.</span>`;
+    return;
+  }
+  // Filter by range
+  const now=new Date(),cut=new Date();
+  if(dashPerfRange==='1M')cut.setMonth(now.getMonth()-1);
+  else if(dashPerfRange==='3M')cut.setMonth(now.getMonth()-3);
+  else if(dashPerfRange==='6M')cut.setMonth(now.getMonth()-6);
+  else if(dashPerfRange==='1Y')cut.setFullYear(now.getFullYear()-1);
+  const data=dashPerfRange==='ALL'?hist:hist.filter(p=>new Date(p.date)>=cut);
+  if(!data.length){statsEl.innerHTML='';return;}
+  const first=data[0].value,last=data[data.length-1].value;
+  const gain=last-first,gainPct=first?(gain/first*100):0;
+  const high=Math.max(...data.map(p=>p.value)),low=Math.min(...data.map(p=>p.value));
+  statsEl.innerHTML=`
+    <div style="display:flex;flex-direction:column"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Period gain</div><div style="font-size:13px;font-weight:600;font-family:var(--fm);color:${gain>=0?'var(--gain)':'var(--loss)'}">${gain>=0?'+':''}${fmtM(gain)} (${fmtPct(gainPct)})</div></div>
+    <div style="display:flex;flex-direction:column"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Period high</div><div style="font-size:13px;font-weight:600;font-family:var(--fm);color:var(--text)">${fmtM(high)}</div></div>
+    <div style="display:flex;flex-direction:column"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Period low</div><div style="font-size:13px;font-weight:600;font-family:var(--fm);color:var(--text)">${fmtM(low)}</div></div>
+    <div style="display:flex;flex-direction:column"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em">Data points</div><div style="font-size:13px;font-weight:600;font-family:var(--fm);color:var(--text2)">${data.length}</div></div>`;
+  const color=gain>=0?'#4caf82':'#e05555';
+  const bgColor=gain>=0?'rgba(76,175,130,.08)':'rgba(224,85,85,.08)';
+  charts['dash-perf']=new Chart(document.getElementById('c-dash-perf'),{
+    type:'line',
+    data:{labels:data.map(p=>p.date),datasets:[{
+      data:data.map(p=>toDisp(p.value)),
+      borderColor:color,borderWidth:2,pointRadius:0,pointHoverRadius:4,
+      fill:true,backgroundColor:bgColor,tension:0.3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${csym(S.currency)} ${Math.round(ctx.raw).toLocaleString()}`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#8a8880',maxTicksLimit:6,font:{size:9}}},
+        y:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#8a8880',callback:v=>csym(S.currency)+' '+Math.round(v/1000)+'K',font:{size:9}}}
+      }
+    }
+  });
 }
+
+// P&L horizontal bar chart
+function renderPnlBarChart(hs){
+  destroyChart('pnl-bar');
+  const withPL=hs.filter(h=>h.plPct!==null).sort((a,b)=>b.plPct-a.plPct).slice(0,10);
+  if(!withPL.length)return;
+  charts['pnl-bar']=new Chart(document.getElementById('c-pnl-bar'),{
+    type:'bar',
+    data:{
+      labels:withPL.map(h=>h.ticker),
+      datasets:[{
+        data:withPL.map(h=>h.plPct),
+        backgroundColor:withPL.map(h=>h.plPct>=0?'rgba(76,175,130,.7)':'rgba(224,85,85,.7)'),
+        borderRadius:4,borderSkipped:false
+      }]
+    },
+    options:{
+      indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.raw.toFixed(2)}%`}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8a8880',callback:v=>v+'%',font:{size:9}},
+          position:'top'},
+        y:{grid:{display:false},ticks:{color:'#e2ddd8',font:{size:10,family:"'JetBrains Mono',monospace"}}}
+      }
+    }
+  });
+}
+
+// Today's movers using priceCache
+function renderMovers(hs){
+  const el=document.getElementById('dash-movers');
+  const timeEl=document.getElementById('movers-time');
+  const movers=hs.map(h=>{
+    const c=priceCache[h.ticker];
+    if(!c||!c.prev)return null;
+    const chg=(c.price-c.prev)/c.prev*100;
+    return{ticker:h.ticker,name:h.name,price:c.price,chg,updated:c.updated};
+  }).filter(Boolean).sort((a,b)=>Math.abs(b.chg)-Math.abs(a.chg)).slice(0,8);
+  if(!movers.length){
+    el.innerHTML=`<div style="font-size:11px;color:var(--text3);padding:16px 0">Click "Live prices" to fetch today's price changes.</div>`;
+    timeEl.textContent='';return;
+  }
+  const updated=new Date(movers[0].updated);
+  timeEl.textContent='as of '+updated.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  el.innerHTML=movers.map(m=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)" onclick="nav('holdings')" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="pill" style="font-size:9px">${m.ticker}</span>
+        <span style="font-size:11px;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.name}</span>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--fm);font-size:11px;color:var(--text)">${fmtM(m.price,true)}</div>
+        <div style="font-family:var(--fm);font-size:10px;color:${m.chg>=0?'var(--gain)':'var(--loss)'}">${m.chg>=0?'+':''}${m.chg.toFixed(2)}%</div>
+      </div>
+    </div>`).join('');
+}
+
+// Dashboard news section
+async function fetchDashNews(){
+  const key=S.settings.newsapi||'';
+  const el=document.getElementById('dash-news-list');
+  const warn=document.getElementById('dash-news-warn');
+  const spin=document.getElementById('dash-news-spin');
+  const src=document.getElementById('dash-news-src');
+  if(!el)return;
+  if(!key){if(warn)warn.style.display='block';el.innerHTML='';return;}
+  if(warn)warn.style.display='none';
+  if(spin)spin.innerHTML='<span class="spinner"></span>';
+  const tickers=[...new Set(allH().map(h=>h.ticker))].slice(0,6);
+  if(!tickers.length){el.innerHTML='<div style="font-size:11px;color:var(--text3)">Add holdings to see relevant news.</div>';if(spin)spin.innerHTML='';return;}
+  try{
+    const q=tickers.join(' OR ');
+    const r=await fetch(`https://newsapi.org/v2/everything?q=${encodeURIComponent(q)}&sortBy=publishedAt&pageSize=8&language=en&apiKey=${key}`);
+    const d=await r.json();
+    if(d.status!=='ok')throw new Error(d.message);
+    if(src)src.textContent='via NewsAPI';
+    el.innerHTML=d.articles.slice(0,6).map(a=>{
+      const rel=tickers.find(t=>(a.title+' '+(a.description||'')).toUpperCase().includes(t));
+      return`<div class="dash-news-item" onclick="window.open('${a.url}','_blank')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="dn-src">${a.source.name}</div>
+          ${rel?`<span class="pill" style="font-size:8px">${rel}</span>`:''}
+        </div>
+        <div class="dn-hl">${a.title}</div>
+        <div class="dn-meta">${timeSince(new Date(a.publishedAt))}</div>
+      </div>`;
+    }).join('')||'<div style="font-size:11px;color:var(--text3)">No recent articles found for your holdings.</div>';
+  }catch(e){
+    el.innerHTML=`<div style="font-size:11px;color:var(--text3)">Could not load news: ${e.message}</div>`;
+  }finally{if(spin)spin.innerHTML='';}
+}
+
 function renderTypeChart(hs,total){
   destroyChart('type');
   const map={};hs.forEach(h=>{map[h.type]=(map[h.type]||0)+h.value;});
@@ -1320,17 +1583,9 @@ function renderTypeChart(hs,total){
       <span class="breakdown-pct">${pct.toFixed(1)}%</span><span class="breakdown-val">${fmtM(map[k])}</span></div>`;
   }).join('');
 }
-function renderExchChart(hs){
-  destroyChart('exch');
-  const map={};hs.forEach(h=>{const e=h.exchange||'NSE';map[e]=(map[e]||0)+h.value;});
-  const keys=Object.keys(map);if(!keys.length)return;
-  charts.exch=new Chart(document.getElementById('c-exch'),doughnutCfg(keys,keys.map(k=>map[k])));
-}
 function renderDashTable(hs,total){
   document.getElementById('dash-table').innerHTML=[...hs].sort((a,b)=>b.value-a.value).slice(0,10).map(h=>{
     const w=total?(h.value/total*100):0;
-    const cached=priceCache[h.ticker];
-    const chg=cached&&cached.prev?((cached.price-cached.prev)/cached.prev*100):null;
     return`<tr onclick="openDetail('${h.id}','dashboard')">
       <td><span class="pill">${h.ticker}</span></td>
       <td style="color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis">${h.name}</td>
@@ -1837,9 +2092,148 @@ function renderEcoEvents(){
   }).join('')||'<div style="padding:16px;text-align:center;color:var(--text2);font-size:12px">No upcoming events.</div>';
 }
 // ═══ IMPORT / MERGE ═══════════════════════════════════════════
+// ═══ PDF PARSING ENGINE ═══════════════════════════════════════
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+let pdfParsedRows=[];
+
+async function parsePDF(file){
+  notif('Reading PDF…','info');
+  try{
+    const ab=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+    let fullText='';
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const tc=await page.getTextContent();
+      const lines={};
+      tc.items.forEach(item=>{
+        const y=Math.round(item.transform[5]);
+        if(!lines[y])lines[y]=[];
+        lines[y].push({x:item.transform[4],str:item.str});
+      });
+      Object.keys(lines).sort((a,b)=>b-a).forEach(y=>{
+        const line=lines[y].sort((a,b)=>a.x-b.x).map(i=>i.str).join(' ').trim();
+        if(line)fullText+=line+'\n';
+      });
+      fullText+='\n';
+    }
+    document.getElementById('pdf-raw-text').textContent=fullText;
+    return fullText;
+  }catch(e){notif('PDF read error: '+e.message,'err');return null;}
+}
+
+function parsePDFHoldings(text){
+  const rows=[];const seen=new Set();
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  const numClean=s=>parseFloat(String(s).replace(/,/g,''))||0;
+  const typeKW={equity:'Stock',stock:'Stock',share:'Stock',etf:'ETF','exchange traded':'ETF',
+    'mutual fund':'MF',mf:'MF',fund:'MF',bond:'Bond',debenture:'Bond',ncd:'Bond',
+    reit:'REIT','real estate':'REIT',invit:'InvIT',sgb:'SGB','gold bond':'SGB'};
+  const skip=new Set(['THE','FOR','AND','BUT','WITH','INR','NSE','BSE','ISIN','DATE','FROM','TOTAL','GRAND','DEMAT','FOLIO','SCHEME','UNITS','VALUE','AMOUNT','PRICE','RATE']);
+
+  // Strategy 1: table rows ticker + name + qty + price
+  const tblRx=/^([A-Z]{2,15})\s{1,6}([A-Za-z][A-Za-z &().-]{3,45})\s+([\d,]+\.?\d*)\s+([\d,]+\.?\d*)/;
+  lines.forEach((line,i)=>{
+    const m=line.match(tblRx);
+    if(!m)return;
+    const ticker=m[1];if(skip.has(ticker)||ticker.length<3)return;
+    const qty=numClean(m[3]),avg=numClean(m[4]);
+    if(qty<=0||qty>999999)return;
+    if(seen.has(ticker))return;seen.add(ticker);
+    const ctx=(lines[i-1]||'')+line+(lines[i+1]||'');
+    let type='Stock';
+    for(const[kw,tp]of Object.entries(typeKW)){if(ctx.toLowerCase().includes(kw)){type=tp;break;}}
+    rows.push({ticker,name:m[2].trim(),type,qty,avg,cur:0});
+  });
+
+  // Strategy 2: ISIN-based
+  const isinRx=/INE[A-Z0-9]{9}/g;
+  const fullText=lines.join('\n');
+  for(const match of fullText.matchAll(isinRx)){
+    const isin=match[0];
+    const ctx=fullText.substring(Math.max(0,match.index-150),match.index+200);
+    const nums=(ctx.match(/([\d]{1,6}(?:,\d{3})*(?:\.\d{1,4})?)/g)||[]).map(numClean).filter(n=>n>0);
+    if(nums.length<2)continue;
+    const beforeISIN=ctx.substring(0,ctx.indexOf(isin));
+    const nm=beforeISIN.match(/([A-Z][A-Za-z &().-]{4,50})$/);
+    const name=nm?nm[1].trim():'Unknown';
+    const ticker=name.replace(/[^A-Z]/gi,'').toUpperCase().slice(0,10)||isin.slice(2,8);
+    if(seen.has(ticker))continue;seen.add(ticker);
+    rows.push({ticker,name,type:'Stock',qty:nums[0],avg:nums[1],cur:0});
+  }
+  return rows;
+}
+
+function togglePdfRaw(){const el=document.getElementById('pdf-raw-text');el.style.display=el.style.display==='none'?'block':'none';}
+
+async function handlePDF(file){
+  const text=await parsePDF(file);if(!text)return;
+  pdfParsedRows=parsePDFHoldings(text);
+  if(!pdfParsedRows.length)pdfParsedRows=[{ticker:'',name:'',type:'Stock',qty:0,avg:0,cur:0}];
+  document.getElementById('pdf-found-label').textContent=
+    pdfParsedRows.length>0?`Detected ${pdfParsedRows.length} holding${pdfParsedRows.length!==1?'s':''} — edit and confirm:`:'No holdings auto-detected — add manually below:';
+  document.getElementById('pdf-extract-result').style.display='block';
+  renderPdfTable();
+  notif('PDF parsed — review holdings below.','ok');
+}
+function renderPdfTable(){
+  document.getElementById('pdf-rows').innerHTML=pdfParsedRows.map((r,i)=>`
+    <tr>
+      <td><input class="pdf-row-edit" value="${r.ticker}" onchange="pdfParsedRows[${i}].ticker=this.value.toUpperCase()" placeholder="RELIANCE"/></td>
+      <td><input class="pdf-row-edit" value="${r.name}" onchange="pdfParsedRows[${i}].name=this.value" placeholder="Company name" style="width:140px"/></td>
+      <td><select class="pdf-row-edit" onchange="pdfParsedRows[${i}].type=this.value" style="padding:2px 4px">
+        ${['Stock','MF','ETF','SGB','REIT','InvIT','Bond','Intl','Other'].map(t=>`<option ${r.type===t?'selected':''}>${t}</option>`).join('')}</select></td>
+      <td><input class="pdf-row-edit" type="number" value="${r.qty||''}" onchange="pdfParsedRows[${i}].qty=parseFloat(this.value)||0" placeholder="0"/></td>
+      <td><input class="pdf-row-edit" type="number" value="${r.avg||''}" onchange="pdfParsedRows[${i}].avg=parseFloat(this.value)||0" placeholder="0.00"/></td>
+      <td><input class="pdf-row-edit" type="number" value="${r.cur||''}" onchange="pdfParsedRows[${i}].cur=parseFloat(this.value)||0" placeholder="0.00"/></td>
+      <td><button onclick="pdfParsedRows.splice(${i},1);renderPdfTable()" style="background:none;border:none;color:var(--loss);cursor:pointer;font-size:13px;padding:0 4px">&#215;</button></td>
+    </tr>`).join('')
+  +`<tr><td colspan="7" style="padding:6px 0"><button onclick="pdfParsedRows.push({ticker:'',name:'',type:'Stock',qty:0,avg:0,cur:0});renderPdfTable()" style="background:none;border:1px solid var(--border2);border-radius:4px;color:var(--text2);font-size:10px;padding:3px 9px;cursor:pointer;font-family:var(--ff)">+ Add row</button></td></tr>`;
+}
+function importPdfHoldings(){
+  const valid=pdfParsedRows.filter(r=>r.ticker&&r.qty>0);
+  if(!valid.length){notif('Ticker and quantity required for each row.','err');return;}
+  const imported=valid.map(r=>({
+    id:'h_'+Date.now()+'_'+Math.random().toString(36).slice(2),
+    ticker:r.ticker.toUpperCase(),name:r.name||r.ticker,type:r.type||'Stock',
+    exchange:'NSE',qty:r.qty,avg:r.avg||0,cur:r.cur||0,
+    value:r.qty*(r.cur||r.avg||0),notes:'From PDF',added:new Date().toISOString()
+  }));
+  const existing=getH();const conflicts=[],newOnes=[];
+  imported.forEach(h=>{
+    const dup=existing.find(e=>e.ticker===h.ticker);
+    if(dup)conflicts.push({holding:h,existing:dup,action:'update'});
+    else newOnes.push({holding:h,isNew:true,action:'add'});
+  });
+  if(!conflicts.length){
+    setH([...existing,...newOnes.map(x=>x.holding)]);
+    recordAllSnapshots();updateGrandBar();
+    document.getElementById('pdf-extract-result').style.display='none';
+    document.getElementById('file-input').value='';
+    nav('dashboard');notif(`PDF: ${newOnes.length} holding${newOnes.length!==1?'s':''} imported.`,'ok');return;
+  }
+  pendingImport=[...conflicts,...newOnes];
+  document.getElementById('merge-list').innerHTML=
+    conflicts.map((c,i)=>`<div class="merge-row">
+      <span class="merge-ticker">${c.holding.ticker}</span>
+      <div class="merge-info"><b>${c.holding.name}</b><br/>
+        <span>Existing: Qty ${c.existing.qty} &middot; Avg ${c.existing.avg?fmtM(c.existing.avg,true):'\u2014'}</span><br/>
+        <span>PDF: Qty ${c.holding.qty} &middot; Avg ${c.holding.avg?fmtM(c.holding.avg,true):'\u2014'}</span></div>
+      <div class="merge-action">
+        <button class="mbtn au" id="mb-${i}-update" onclick="setMA(${i},'update')">Replace</button>
+        <button class="mbtn" id="mb-${i}-keep" onclick="setMA(${i},'keep')">Keep</button>
+        <button class="mbtn" id="mb-${i}-add" onclick="setMA(${i},'add')">Add both</button>
+      </div></div>`).join('')
+    +(newOnes.length?`<div style="padding:9px 0 4px;font-size:10px;color:var(--text2)">${newOnes.length} new: ${newOnes.map(x=>`<span class="pill" style="font-size:9px">${x.holding.ticker}</span>`).join(' ')}</div>`:'');
+  openModal('modal-merge');
+}
+
 function handleFile(file){
   if(!file)return;
   const ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='pdf'){handlePDF(file);return;}
   if(ext==='xlsx'||ext==='xls'){
     const reader=new FileReader();
     reader.onload=e=>{
